@@ -395,7 +395,12 @@
                         branch
                     })
                 });
-                if (!response.ok) throw new Error('Failed to update file');
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to update file');
+                }
+
                 return response.json();
             },
             
@@ -626,13 +631,27 @@
                     const message = `Update ${state.currentFile.name}`;
                     
                     // Update file with latest SHA
-                    const result = await github.updateFile(
-                        state.currentFile.path,
-                        content,
-                        currentSha,
-                        message,
-                        state.currentBranch
-                    );
+                    const updateResponse = await fetch(`https://api.github.com/repos/${state.currentRepo}/contents/${state.currentFile.path}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${github.token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            content: btoa(unescape(encodeURIComponent(content))),
+                            sha: currentSha,
+                            branch: state.currentBranch
+                        })
+                    });
+
+                    if (!updateResponse.ok) {
+                        const errorData = await updateResponse.json();
+                        throw new Error(errorData.message || 'Failed to save file');
+                    }
+
+                    const result = await updateResponse.json();
                     
                     // Update file info with the latest content and SHA
                     state.currentFile.sha = result.content.sha;
@@ -654,10 +673,11 @@
                     
                     showToast('success', 'File saved successfully');
                 } catch (error) {
+                    console.error('Save error:', error);
                     if (error.message.includes('sha')) {
                         showToast('error', 'File was modified elsewhere. Please reload and try again.');
                     } else {
-                        errorHandler.handle(error, 'saveFile');
+                        showToast('error', `Failed to save: ${error.message}`);
                     }
                 } finally {
                     loading.hide();
