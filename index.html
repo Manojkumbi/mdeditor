@@ -520,6 +520,28 @@
             }
         }
 
+        // UI Management
+        const uiManager = {
+            toggleSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                const editorContainer = document.querySelector('.editor-container');
+                
+                if (sidebar.classList.contains('hidden')) {
+                    sidebar.classList.remove('hidden');
+                    if (editorContainer) {
+                        editorContainer.classList.remove('w-full');
+                        editorContainer.classList.add('w-[calc(100%-16rem)]');
+                    }
+                } else {
+                    sidebar.classList.add('hidden');
+                    if (editorContainer) {
+                        editorContainer.classList.remove('w-[calc(100%-16rem)]');
+                        editorContainer.classList.add('w-full');
+                    }
+                }
+            }
+        };
+
         // Initialize app
         document.addEventListener('DOMContentLoaded', () => {
             try {
@@ -630,6 +652,13 @@
                         document.getElementById('repo-dropdown').classList.add('hidden');
                     }
                 });
+
+                // Setup menu toggle
+                if (elements.menuToggle) {
+                    elements.menuToggle.addEventListener('click', () => {
+                        uiManager.toggleSidebar();
+                    });
+                }
             } catch (error) {
                 console.error('Initialization error:', error);
                 showToast('error', 'Failed to initialize application');
