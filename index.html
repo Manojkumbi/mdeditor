@@ -86,26 +86,25 @@
 <body class="h-full bg-[#1e1e1e] text-white overflow-hidden">
     <!-- Login Screen -->
     <div id="login-screen" class="fixed inset-0 flex items-center justify-center bg-[#1e1e1e]">
-        <div class="bg-[#2d2d2d] p-8 rounded-lg shadow-xl w-96">
-            <h2 class="text-2xl font-bold mb-6 text-center">GitHub Web IDE</h2>
+        <div class="max-w-md w-full px-6 py-8 bg-white dark:bg-gray-800 shadow-md rounded-lg">
+            <div class="text-center mb-8">
+                <svg class="mx-auto h-12 w-auto text-gray-800 dark:text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                </svg>
+                <h2 class="mt-4 text-2xl font-bold text-gray-900 dark:text-white">GitHub Markdown Editor</h2>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">Enter your GitHub Personal Access Token to start editing</p>
+            </div>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium mb-1">GitHub Username</label>
-                    <input type="text" id="github-username" class="w-full px-3 py-2 bg-[#3c3c3c] rounded border border-[#4c4c4c] focus:outline-none focus:border-blue-500">
-        </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Repository Name</label>
-                    <input type="text" id="repo-name" class="w-full px-3 py-2 bg-[#3c3c3c] rounded border border-[#4c4c4c] focus:outline-none focus:border-blue-500">
-            </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">GitHub Client ID</label>
-                    <input type="text" id="client-id" class="w-full px-3 py-2 bg-[#3c3c3c] rounded border border-[#4c4c4c] focus:outline-none focus:border-blue-500">
-            </div>
+                    <label class="block text-sm font-medium mb-1">GitHub Token</label>
+                    <input type="password" id="github-token" class="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-500" placeholder="ghp_xxxxxxxxxxxx">
+                    <p class="mt-1 text-xs text-gray-500">Create a token with 'repo' scope at <a href="https://github.com/settings/tokens" target="_blank" class="text-blue-500 hover:text-blue-600">GitHub Settings</a></p>
+                </div>
                 <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded">
                     Connect to GitHub
-          </button>
+                </button>
+            </div>
         </div>
-      </div>
     </div>
 
     <!-- Main IDE Interface -->
@@ -187,7 +186,7 @@
             commitMessage: document.getElementById('commit-message'),
             saveBtn: document.getElementById('save-btn'),
             loginBtn: document.getElementById('login-btn'),
-            clientIdInput: document.getElementById('client-id'),
+            tokenInput: document.getElementById('github-token'),
             repoDropdown: document.getElementById('repo-dropdown-content'),
             currentRepoName: document.getElementById('current-repo-name')
         };
@@ -243,28 +242,18 @@
           }, 3000);
       }
 
-      // GitHub API Integration
+      // Simplified GitHub API Integration
       const github = {
-          clientId: '',
+          token: '',
           
-          init(clientId) {
-              this.clientId = clientId;
+          init(token) {
+              this.token = token;
           },
           
-          authorize() {
-              const params = new URLSearchParams({
-                  client_id: this.clientId,
-                  scope: 'repo',
-                  redirect_uri: window.location.href
-              });
-              
-              window.location.href = `https://github.com/login/oauth/authorize?${params}`;
-          },
-          
-          async getUser(token) {
+          async getUser() {
               const response = await fetch('https://api.github.com/user', {
                   headers: {
-                      'Authorization': `token ${token}`,
+                      'Authorization': `token ${this.token}`,
                       'Accept': 'application/vnd.github.v3+json'
                   }
               });
@@ -272,10 +261,10 @@
               return response.json();
           },
           
-          async getRepos(token) {
+          async getRepos() {
               const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
                   headers: {
-                      'Authorization': `token ${token}`,
+                      'Authorization': `token ${this.token}`,
                       'Accept': 'application/vnd.github.v3+json'
                   }
               });
@@ -283,11 +272,11 @@
               return response.json();
           },
           
-          async getContents(token, owner, repo, path = '', ref = 'main') {
-              const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}${ref ? '?ref=' + ref : ''}`;
+          async getContents(path = '', ref = 'main') {
+              const url = `https://api.github.com/repos/${state.currentRepo}/contents/${path}${ref ? '?ref=' + ref : ''}`;
               const response = await fetch(url, {
                   headers: {
-                      'Authorization': `token ${token}`,
+                      'Authorization': `token ${this.token}`,
                       'Accept': 'application/vnd.github.v3+json'
                   }
               });
@@ -295,8 +284,8 @@
               return response.json();
           },
           
-          async getFile(token, owner, repo, path, ref = 'main') {
-              const content = await this.getContents(token, owner, repo, path, ref);
+          async getFile(path, ref = 'main') {
+              const content = await this.getContents(path, ref);
               if (Array.isArray(content)) {
                   throw new Error('Path is a directory');
               }
@@ -306,12 +295,12 @@
               };
           },
           
-          async updateFile(token, owner, repo, path, content, sha, message, branch = 'main') {
-              const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+          async updateFile(path, content, sha, message, branch = 'main') {
+              const url = `https://api.github.com/repos/${state.currentRepo}/contents/${path}`;
               const response = await fetch(url, {
                   method: 'PUT',
                   headers: {
-                      'Authorization': `token ${token}`,
+                      'Authorization': `token ${this.token}`,
                       'Accept': 'application/vnd.github.v3+json',
                       'Content-Type': 'application/json'
                   },
@@ -327,45 +316,41 @@
           }
       };
 
-      // Handle login
-      function handleLogin() {
-          const clientId = elements.clientIdInput.value;
-          if (!clientId) {
-              showToast('error', 'Please enter your GitHub Client ID');
+      // Simplified login handler
+      async function handleLogin() {
+          const token = elements.tokenInput.value.trim();
+          if (!token) {
+              showToast('error', 'Please enter your GitHub token');
               return;
           }
           
-          github.init(clientId);
-          localStorage.setItem('github_client_id', clientId);
-          github.authorize();
-      }
-
-      // Handle OAuth callback
-      async function handleOAuthCallback(code) {
           try {
-              showToast('info', 'Authenticating...');
+              showToast('info', 'Connecting to GitHub...');
               
-              // For this example, we'll use the code as the token
-              // In a real app, you would exchange this for a token using your backend
-              const token = code;
+              // Initialize GitHub API with token
+              github.init(token);
+              
+              // Test the token by getting user info
+              const user = await github.getUser();
+              
+              // Store token for later use
               localStorage.setItem('github_token', token);
               
-              // Get user info
-              const user = await github.getUser(token);
+              // Update UI with user info
               updateUserInfo(user);
               
-              // Get repositories
-              const repos = await github.getRepos(token);
+              // Get and display repositories
+              const repos = await github.getRepos();
               populateRepoList(repos);
               
               // Show main interface
               elements.loginScreen.classList.add('hidden');
               elements.app.classList.remove('hidden');
               
-              showToast('success', 'Successfully logged in!');
+              showToast('success', 'Successfully connected!');
           } catch (error) {
-              console.error('Auth error:', error);
-              showToast('error', error.message || 'Authentication failed');
+              console.error('Login error:', error);
+              showToast('error', 'Invalid token or connection failed');
           }
       }
 
@@ -403,11 +388,8 @@
 
       // Load repository contents
       async function loadRepositoryContents(path = '') {
-          const token = localStorage.getItem('github_token');
-          const [owner, repo] = state.currentRepo.split('/');
-          
           try {
-              const contents = await github.getContents(token, owner, repo, path, state.currentBranch);
+              const contents = await github.getContents(path, state.currentBranch);
               displayContents(contents, path);
           } catch (error) {
               throw new Error('Failed to load repository contents');
@@ -416,14 +398,11 @@
 
       // Initialize app
       document.addEventListener('DOMContentLoaded', () => {
-          // Check for OAuth callback
-          const urlParams = new URLSearchParams(window.location.search);
-          const code = urlParams.get('code');
-          
-          if (code) {
-              // Remove code from URL
-              window.history.replaceState({}, document.title, window.location.pathname);
-              handleOAuthCallback(code);
+          // Check for saved token
+          const savedToken = localStorage.getItem('github_token');
+          if (savedToken) {
+              elements.tokenInput.value = savedToken;
+              handleLogin();
           }
           
           // Setup event listeners
@@ -473,12 +452,9 @@
 
       async function openFile(file) {
           try {
-              const token = localStorage.getItem('github_token');
-              const [owner, repo] = state.currentRepo.split('/');
-              
               showToast('info', 'Loading file...');
               
-              const { content, sha } = await github.getFile(token, owner, repo, file.path);
+              const { content, sha } = await github.getFile(file.path);
               
               // Update editor
               state.editor.setValue(content);
@@ -507,17 +483,12 @@
           if (!state.currentFile) return;
           
           try {
-              const token = localStorage.getItem('github_token');
-              const [owner, repo] = state.currentRepo.split('/');
               const content = state.editor.getValue();
               const message = elements.commitMessage.value || `Update ${state.currentFile.name}`;
               
               showToast('info', 'Saving changes...');
               
               const result = await github.updateFile(
-                  token,
-                  owner,
-                  repo,
                   state.currentFile.path,
                   content,
                   state.currentFile.sha,
