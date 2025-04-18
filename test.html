@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Explorer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .header {
+            background-color: #f3f3f3;
+            padding: 10px 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #f9f9f9;
+            border-right: 1px solid #ddd;
+            overflow-y: auto;
+            padding: 10px 0;
+        }
+        .sidebar-header {
+            padding: 0 15px 10px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 10px;
+        }
+        .refresh-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            color: #0366d6;
+        }
+        .refresh-btn:hover {
+            text-decoration: underline;
+        }
+        .file-list {
+            list-style: none;
+        }
+        .file-item {
+            padding: 5px 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .file-item:hover {
+            background-color: #e8e8e8;
+        }
+        .file-item.active {
+            background-color: #e1e1e1;
+            font-weight: bold;
+        }
+        .file-icon {
+            margin-right: 5px;
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+            text-align: center;
+        }
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .content-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        /* Markdown styles */
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        h1 { font-size: 2em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+        h2 { font-size: 1.5em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+        p {
+            margin-bottom: 16px;
+        }
+        code {
+            background-color: rgba(27, 31, 35, 0.05);
+            border-radius: 3px;
+            font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 85%;
+            padding: 0.2em 0.4em;
+        }
+        pre {
+            background-color: #f6f8fa;
+            border-radius: 3px;
+            font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 85%;
+            line-height: 1.45;
+            overflow: auto;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+        blockquote {
+            border-left: 0.25em solid #dfe2e5;
+            color: #6a737d;
+            padding: 0 1em;
+            margin: 0 0 16px 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        table th, table td {
+            border: 1px solid #dfe2e5;
+            padding: 6px 13px;
+        }
+        table tr:nth-child(2n) {
+            background-color: #f6f8fa;
+        }
+        .initial-message {
+            color: #666;
+            text-align: center;
+            margin-top: 40px;
+        }
+        .file-input-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        #folder-input {
+            display: none;
+        }
+        .folder-select-btn {
+            padding: 8px 16px;
+            background-color: #0366d6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .folder-select-btn:hover {
+            background-color: #0255b3;
+        }
+        .error-message {
+            color: #d73a49;
+            margin: 20px;
+            padding: 10px;
+            background-color: #ffeeee;
+            border-left: 3px solid #d73a49;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Markdown Explorer</h1>
+    </div>
+    <div class="main-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span>Files</span>
+                <button class="refresh-btn" id="refresh-btn">Refresh</button>
+            </div>
+            <ul class="file-list" id="file-list"></ul>
+        </aside>
+        <main class="content">
+            <div class="content-container" id="content">
+                <div class="initial-message">
+                    <h2>Welcome to Markdown Explorer</h2>
+                    <p>Select a folder to explore your Markdown files</p>
+                    <div class="file-input-container">
+                        <input type="file" id="folder-input" webkitdirectory directory multiple>
+                        <button class="folder-select-btn" id="folder-select-btn">Select Folder</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // DOM Elements
+        const fileList = document.getElementById('file-list');
+        const content = document.getElementById('content');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const folderInput = document.getElementById('folder-input');
+        const folderSelectBtn = document.getElementById('folder-select-btn');
+        
+        // State
+        let currentFiles = [];
+        let currentFolder = null;
+        let activeFile = null;
+
+        // Event Listeners
+        folderSelectBtn.addEventListener('click', () => folderInput.click());
+        folderInput.addEventListener('change', handleFolderSelect);
+        refreshBtn.addEventListener('click', () => {
+            if (currentFolder) {
+                folderInput.click();
+            }
+        });
+
+        // Check if a file path is provided in the URL hash
+        window.addEventListener('hashchange', loadFileFromHash);
+        window.addEventListener('load', loadFileFromHash);
+
+        // Functions
+        function handleFolderSelect(event) {
+            const files = Array.from(event.target.files);
+            
+            if (files.length === 0) return;
+            
+            // Clear current files
+            currentFiles = [];
+            fileList.innerHTML = '';
+            
+            // Process files
+            files.forEach(file => {
+                const filePath = file.webkitRelativePath || file.name;
+                const fileName = file.name;
+                const fileExt = fileName.split('.').pop().toLowerCase();
+                
+                if (fileExt === 'md' || fileExt === 'markdown') {
+                    currentFiles.push({
+                        name: fileName,
+                        path: filePath,
+                        file: file
+                    });
+                }
+            });
+            
+            // Sort files by name
+            currentFiles.sort((a, b) => a.name.localeCompare(b.name));
+            
+            // Render file list
+            renderFileList();
+            
+            // Update state
+            currentFolder = files[0].webkitRelativePath.split('/')[0];
+            
+            // If no MD files found
+            if (currentFiles.length === 0) {
+                content.innerHTML = `
+                    <div class="error-message">
+                        <h3>No Markdown Files Found</h3>
+                        <p>The selected folder does not contain any Markdown files (.md or .markdown)</p>
+                    </div>
+                `;
+            } else {
+                // Load the first file by default
+                loadFile(currentFiles[0]);
+            }
+        }
+
+        function renderFileList() {
+            fileList.innerHTML = '';
+            
+            currentFiles.forEach(file => {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                if (activeFile && activeFile.path === file.path) {
+                    li.classList.add('active');
+                }
+                
+                li.innerHTML = `
+                    <span class="file-icon">📄</span>
+                    <span class="file-name">${file.name}</span>
+                `;
+                
+                li.addEventListener('click', () => loadFile(file));
+                fileList.appendChild(li);
+            });
+        }
+
+        function loadFile(file) {
+            // Update active file
+            activeFile = file;
+            
+            // Highlight active file in sidebar
+            document.querySelectorAll('.file-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Update URL hash
+            window.location.hash = encodeURIComponent(file.path);
+            
+            // Read file content
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const markdownContent = e.target.result;
+                const htmlContent = marked.parse(markdownContent);
+                content.innerHTML = `<div class="content-container">${htmlContent}</div>`;
+                document.title = file.name + ' - Markdown Explorer';
+            };
+            reader.readAsText(file.file);
+            
+            // Update UI
+            renderFileList();
+        }
+
+        function loadFileFromHash() {
+            const hash = decodeURIComponent(window.location.hash.substring(1));
+            if (hash && currentFiles.length > 0) {
+                const file = currentFiles.find(f => f.path === hash);
+                if (file) {
+                    loadFile(file);
+                }
+            }
+        }
+
+        // Advanced: Handle drag and drop of folder
+        document.body.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            document.body.style.backgroundColor = '#f0f0f0';
+        });
+
+        document.body.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            document.body.style.backgroundColor = '';
+        });
+
+        document.body.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            document.body.style.backgroundColor = '';
+            
+            const items = e.dataTransfer.items;
+            if (items && items.length > 0) {
+                // Get the folder by getting the webkitGetAsEntry of the first item
+                const entry = items[0].webkitGetAsEntry();
+                if (entry && entry.isDirectory) {
+                    // Process the directory
+                    processDirectory(entry);
+                }
+            }
+        });
+
+        function processDirectory(directoryEntry) {
+            const dirReader = directoryEntry.createReader();
+            currentFiles = [];
+            
+            // Read all entries in the directory
+            function readEntries() {
+                dirReader.readEntries((entries) => {
+                    if (entries.length === 0) {
+                        // Done reading directory
+                        renderFileList();
+                        if (currentFiles.length > 0) {
+                            loadFile(currentFiles[0]);
+                        } else {
+                            content.innerHTML = `
+                                <div class="error-message">
+                                    <h3>No Markdown Files Found</h3>
+                                    <p>The selected folder does not contain any Markdown files (.md or .markdown)</p>
+                                </div>
+                            `;
+                        }
+                        return;
+                    }
+                    
+                    // Process entries
+                    entries.forEach((entry) => {
+                        if (entry.isFile) {
+                            // Check if it's a markdown file
+                            if (entry.name.endsWith('.md') || entry.name.endsWith('.markdown')) {
+                                // Get file object
+                                entry.file((file) => {
+                                    currentFiles.push({
+                                        name: entry.name,
+                                        path: entry.fullPath,
+                                        file: file
+                                    });
+                                    // Sort and re-render after adding a file
+                                    currentFiles.sort((a, b) => a.name.localeCompare(b.name));
+                                    renderFileList();
+                                });
+                            }
+                        } else if (entry.isDirectory) {
+                            // Recursively process subdirectories if needed
+                            // processDirectory(entry); // Uncomment to process subdirectories
+                        }
+                    });
+                    
+                    // Continue reading (readEntries is limited to 100 entries at a time)
+                    readEntries();
+                });
+            }
+            
+            readEntries();
+        }
+    </script>
+</body>
+</html>
