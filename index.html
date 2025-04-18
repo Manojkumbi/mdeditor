@@ -659,6 +659,8 @@
                 if (!fileName) return;
 
                 try {
+                    loading.show('Creating file...');
+                    
                     // If we're in a directory, prepend the path
                     const currentPath = state.currentPath || '';
                     const fullPath = currentPath ? `${currentPath}/${fileName}` : fileName;
@@ -666,16 +668,21 @@
                     // Create empty file
                     await this.createFile(fullPath, '');
                     
-                    // Force refresh the file tree
+                    // Force a complete refresh of the file tree
                     const fileTree = document.getElementById('file-tree');
                     if (fileTree) {
                         fileTree.innerHTML = '';
                     }
+                    
+                    // Reload the current directory contents
                     await loadRepositoryContents(currentPath);
                     
                     showToast('success', `Created ${fileName}`);
                 } catch (error) {
-                    errorHandler.handle(error, 'createNewFile');
+                    console.error('Create file error:', error);
+                    showToast('error', error.message || 'Failed to create file');
+                } finally {
+                    loading.hide();
                 }
             },
 
