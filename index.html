@@ -930,6 +930,55 @@
             }
         };
 
+        // File tree management
+        const fileTreeManager = {
+            async displayContents(contents) {
+                const fileTree = document.getElementById('file-tree');
+                fileTree.innerHTML = '';
+                
+                // Sort contents: directories first, then files
+                const sortedContents = contents.sort((a, b) => {
+                    if (a.type === b.type) return a.name.localeCompare(b.name);
+                    return a.type === 'dir' ? -1 : 1;
+                });
+                
+                sortedContents.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'file-tree-item';
+                    div.setAttribute('data-path', item.path);
+                    
+                    const icon = document.createElement('span');
+                    icon.className = 'file-icon';
+                    icon.innerHTML = item.type === 'dir' ? '📁' : getFileIcon(item.name);
+                    
+                    const name = document.createElement('span');
+                    name.textContent = item.name;
+                    
+                    div.appendChild(icon);
+                    div.appendChild(name);
+                    
+                    if (item.type === 'dir') {
+                        div.addEventListener('click', async () => {
+                            try {
+                                loading.show('Loading directory...');
+                                const dirContents = await github.getContents(item.path, state.currentBranch);
+                                await this.displayContents(dirContents);
+                                showToast('success', `Loaded ${item.name}`);
+                            } catch (error) {
+                                errorHandler.handle(error, 'loadDirectory');
+                            } finally {
+                                loading.hide();
+                            }
+                        });
+                    } else {
+                        div.addEventListener('click', () => openFile(item));
+                    }
+                    
+                    fileTree.appendChild(div);
+                });
+            }
+        };
+
         // Repository management
         const repoManager = {
             async loadRepositories() {
@@ -971,7 +1020,7 @@
                     
                     // Load repository contents
                     const contents = await github.getContents('', state.currentBranch);
-                    await displayContents(contents);
+                    await fileTreeManager.displayContents(contents);
                     
                     showToast('success', `Switched to ${repo.full_name}`);
                 } catch (error) {
