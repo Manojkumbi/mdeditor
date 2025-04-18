@@ -967,7 +967,7 @@
                     loading.show('Loading repository...');
                     state.currentRepo = repo.full_name;
                     elements.currentRepoName.textContent = repo.full_name;
-                    elements.repoDropdown.classList.add('hidden');
+                    document.getElementById('repo-dropdown').classList.add('hidden');
                     
                     // Load repository contents
                     const contents = await github.getContents('', state.currentBranch);
