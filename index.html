@@ -472,11 +472,7 @@
                         elements.currentFileDisplay.textContent = 'No file selected';
                     }
 
-                    // Force refresh the file tree
-                    const fileTree = document.getElementById('file-tree');
-                    if (fileTree) {
-                        fileTree.innerHTML = '';
-                    }
+                    // Force a complete refresh of the file tree
                     await loadRepositoryContents(parentPath);
                     
                     showToast('success', 'File deleted successfully');
@@ -827,11 +823,7 @@
                         elements.currentFileDisplay.textContent = 'No file selected';
                     }
 
-                    // Force refresh the file tree
-                    const fileTree = document.getElementById('file-tree');
-                    if (fileTree) {
-                        fileTree.innerHTML = '';
-                    }
+                    // Force a complete refresh of the file tree
                     await loadRepositoryContents(parentPath);
                     
                     showToast('success', 'File deleted successfully');
@@ -1040,6 +1032,13 @@
             try {
                 loading.show('Loading contents...');
                 state.currentPath = path;
+                
+                // Clear the file tree first
+                const fileTree = document.getElementById('file-tree');
+                if (fileTree) {
+                    fileTree.innerHTML = '';
+                }
+                
                 const contents = await github.getContents(path, state.currentBranch);
                 await fileTreeManager.displayContents(contents);
             } catch (error) {
@@ -1274,7 +1273,7 @@
         const fileTreeManager = {
             async displayContents(contents) {
                 const fileTree = document.getElementById('file-tree');
-                fileTree.innerHTML = '';
+                if (!fileTree) return;
                 
                 // Sort contents: directories first, then files
                 const sortedContents = contents.sort((a, b) => {
@@ -1307,7 +1306,6 @@
                         });
                     } else {
                         div.addEventListener('click', async () => {
-                            // If there are unsaved changes, ask for confirmation
                             if (state.isFileModified) {
                                 if (confirm('You have unsaved changes. Do you want to discard them and open the new file?')) {
                                     await openFile(item);
@@ -1327,7 +1325,6 @@
                     backDiv.className = 'file-tree-item';
                     backDiv.innerHTML = '📂 ..';
                     backDiv.addEventListener('click', async () => {
-                        // If there are unsaved changes, ask for confirmation
                         if (state.isFileModified) {
                             if (confirm('You have unsaved changes. Do you want to discard them and go back?')) {
                                 const parentPath = state.currentPath.split('/').slice(0, -1).join('/');
