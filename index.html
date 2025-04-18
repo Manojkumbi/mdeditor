@@ -617,7 +617,7 @@
                         state.currentBranch
                     );
                     
-                    // Update file info
+                    // Update file info with the latest content and SHA
                     state.currentFile.sha = result.content.sha;
                     state.currentFile.content = content;
                     state.isFileModified = false;
@@ -941,6 +941,7 @@
             try {
                 loading.show('Loading file...');
                 
+                // Always fetch the latest content from the repository
                 const { content, sha } = await github.getFile(file.path);
                 
                 // Update editor
@@ -1120,7 +1121,16 @@
                             }
                         });
                     } else {
-                        div.addEventListener('click', () => openFile(item));
+                        div.addEventListener('click', async () => {
+                            // If there are unsaved changes, ask for confirmation
+                            if (state.isFileModified) {
+                                if (confirm('You have unsaved changes. Do you want to discard them and open the new file?')) {
+                                    await openFile(item);
+                                }
+                            } else {
+                                await openFile(item);
+                            }
+                        });
                     }
                     
                     fileTree.appendChild(div);
@@ -1132,8 +1142,16 @@
                     backDiv.className = 'file-tree-item';
                     backDiv.innerHTML = '📂 ..';
                     backDiv.addEventListener('click', async () => {
-                        const parentPath = state.currentPath.split('/').slice(0, -1).join('/');
-                        await loadRepositoryContents(parentPath);
+                        // If there are unsaved changes, ask for confirmation
+                        if (state.isFileModified) {
+                            if (confirm('You have unsaved changes. Do you want to discard them and go back?')) {
+                                const parentPath = state.currentPath.split('/').slice(0, -1).join('/');
+                                await loadRepositoryContents(parentPath);
+                            }
+                        } else {
+                            const parentPath = state.currentPath.split('/').slice(0, -1).join('/');
+                            await loadRepositoryContents(parentPath);
+                        }
                     });
                     fileTree.insertBefore(backDiv, fileTree.firstChild);
                 }
