@@ -6,6 +6,8 @@
     <title>Web IDE</title>
     <!-- Monaco Editor -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -81,6 +83,51 @@
             background-color: #3b82f6;
             color: white;
         }
+        
+        /* Loading spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* File tree styles */
+        .file-tree-item {
+            display: flex;
+            align-items: center;
+            padding: 0.25rem;
+            cursor: pointer;
+            border-radius: 0.25rem;
+        }
+        
+        .file-tree-item:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        
+        .file-tree-item.active {
+            background-color: rgba(255,255,255,0.2);
+        }
+        
+        .file-icon {
+            margin-right: 0.5rem;
+            width: 1rem;
+            height: 1rem;
+        }
+        
+        /* Modified file indicator */
+        .modified::after {
+            content: "●";
+            color: #fbbf24;
+            margin-left: 0.5rem;
+        }
     </style>
   </head>
 <body class="h-full bg-[#1e1e1e] text-white overflow-hidden">
@@ -117,6 +164,14 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                     </svg>
                 </button>
+                <div class="flex items-center space-x-2">
+                    <span id="current-repo-name" class="text-sm opacity-75">No repository selected</span>
+                    <button id="repo-selector" class="p-1 hover:bg-[#3c3c3c] rounded">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                </div>
                 <span id="current-file" class="text-sm opacity-75">No file selected</span>
             </div>
             <div class="flex items-center space-x-4">
@@ -174,6 +229,14 @@
 
     <div id="dropdown-user-name" class="text-sm font-medium"></div>
     <div id="dropdown-user-email" class="text-xs text-gray-500"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-[#2d2d2d] p-4 rounded-lg flex items-center space-x-3">
+            <div class="loading-spinner"></div>
+            <span id="loading-message">Loading...</span>
+        </div>
+    </div>
 
     <script>
         // Global state
@@ -325,6 +388,58 @@
                 });
                 if (!response.ok) throw new Error('Failed to update file');
                 return response.json();
+            },
+            
+            async createFile(path, content = '') {
+                const url = `https://api.github.com/repos/${state.currentRepo}/contents/${path}`;
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${this.token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `Create ${path}`,
+                        content: btoa(unescape(encodeURIComponent(content))),
+                        branch: state.currentBranch
+                    })
+                });
+                if (!response.ok) throw new Error('Failed to create file');
+                return response.json();
+            },
+            
+            async deleteFile(path) {
+                const file = await this.getFile(path);
+                const url = `https://api.github.com/repos/${state.currentRepo}/contents/${path}`;
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `token ${this.token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `Delete ${path}`,
+                        sha: file.sha,
+                        branch: state.currentBranch
+                    })
+                });
+                if (!response.ok) throw new Error('Failed to delete file');
+                return response.json();
+            },
+            
+            async moveFile(oldPath, newPath) {
+                const file = await this.getFile(oldPath);
+                const content = file.content;
+                
+                // Create new file
+                await this.createFile(newPath, content);
+                
+                // Delete old file
+                await this.deleteFile(oldPath);
+                
+                return { success: true };
             }
         };
 
@@ -426,6 +541,56 @@
                         }
                     });
                 }
+
+                // Setup file tree context menu
+                setupFileTreeContextMenu();
+
+                // Initialize Monaco Editor
+                require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
+                require(['vs/editor/editor.main'], function() {
+                    // Create editor instance
+                    state.editor = monaco.editor.create(elements.editor, {
+                        value: '',
+                        language: 'markdown',
+                        theme: 'vs-dark',
+                        automaticLayout: true,
+                        minimap: { enabled: true },
+                        fontSize: 14,
+                        lineNumbers: 'on',
+                        renderWhitespace: 'selection',
+                        wordWrap: 'on',
+                        scrollBeyondLastLine: false,
+                        smoothScrolling: true,
+                        cursorSmoothCaretAnimation: true,
+                        cursorBlinking: 'smooth',
+                        cursorStyle: 'line',
+                        cursorWidth: 2,
+                        bracketPairColorization: {
+                            enabled: true
+                        },
+                        guides: {
+                            bracketPairs: true
+                        }
+                    });
+
+                    // Add change listener
+                    state.editor.getModel().onDidChangeContent(() => {
+                        if (state.currentFile) {
+                            state.isFileModified = true;
+                            document.title = `*${state.currentFile.name} - GitHub Editor`;
+                            updateFileTreeModifiedState(state.currentFile.path, true);
+                        }
+                    });
+
+                    // Add language detection
+                    state.editor.onDidChangeModelContent(() => {
+                        const model = state.editor.getModel();
+                        if (model) {
+                            const language = detectLanguage(model.uri.path);
+                            monaco.editor.setModelLanguage(model, language);
+                        }
+                    });
+                });
             } catch (error) {
                 console.error('Initialization error:', error);
                 showToast('error', 'Failed to initialize application');
@@ -491,11 +656,12 @@
 
         function createFileElement(file) {
             const div = document.createElement('div');
-            div.className = 'flex items-center space-x-2 p-1 hover:bg-[#2d2d2d] rounded cursor-pointer text-sm';
+            div.className = 'file-tree-item';
+            div.setAttribute('data-path', file.path);
             
             const icon = document.createElement('span');
-            icon.className = 'text-[#c5c5c5]';
-            icon.textContent = file.type === 'file' ? '📄' : '📁';
+            icon.className = 'file-icon';
+            icon.innerHTML = getFileIcon(file.name);
             
             const name = document.createElement('span');
             name.textContent = file.name;
@@ -508,9 +674,29 @@
             return div;
         }
 
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const icons = {
+                md: '📝',
+                txt: '📄',
+                js: '📜',
+                jsx: '⚛️',
+                ts: '📘',
+                tsx: '⚛️',
+                html: '🌐',
+                css: '🎨',
+                json: '{ }',
+                yml: '⚙️',
+                yaml: '⚙️',
+                gitignore: '👁️',
+                default: '📄'
+            };
+            return icons[ext] || icons.default;
+        }
+
         async function openFile(file) {
             try {
-                showToast('info', 'Loading file...');
+                loading.show('Loading file...');
                 
                 const { content, sha } = await github.getFile(file.path);
                 
@@ -523,17 +709,33 @@
                 };
                 
                 // Update UI
-                elements.fileNameInput.value = file.name;
                 elements.currentFileDisplay.textContent = file.name;
                 elements.editor.classList.remove('hidden');
                 elements.preview.classList.add('hidden');
+                
+                // Update file tree
+                updateFileTreeSelection(file);
                 
                 state.isFileModified = false;
                 
                 showToast('success', 'File loaded successfully');
             } catch (error) {
-                console.error('Error opening file:', error);
-                showToast('error', 'Failed to load file');
+                errorHandler.handle(error, 'openFile');
+            } finally {
+                loading.hide();
+            }
+        }
+
+        function updateFileTreeSelection(file) {
+            // Remove active class from all items
+            document.querySelectorAll('.file-tree-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Add active class to current file
+            const fileElement = document.querySelector(`[data-path="${file.path}"]`);
+            if (fileElement) {
+                fileElement.classList.add('active');
             }
         }
 
@@ -542,7 +744,7 @@
             
             try {
                 const content = state.editor.getValue();
-                const message = elements.commitMessage.value || `Update ${state.currentFile.name}`;
+                const message = `Update ${state.currentFile.name}`;
                 
                 showToast('info', 'Saving changes...');
                 
@@ -629,6 +831,312 @@
 
             if (missingElements.length > 0) {
                 throw new Error(`Missing required elements: ${missingElements.join(', ')}`);
+            }
+        }
+
+        // Loading state management
+        const loading = {
+            show(message = 'Loading...') {
+                const overlay = document.getElementById('loading-overlay');
+                const messageEl = document.getElementById('loading-message');
+                messageEl.textContent = message;
+                overlay.classList.remove('hidden');
+            },
+            hide() {
+                const overlay = document.getElementById('loading-overlay');
+                overlay.classList.add('hidden');
+            }
+        };
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + S to save
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                if (state.currentFile) saveFile();
+            }
+            
+            // Ctrl/Cmd + B to toggle sidebar
+            if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                e.preventDefault();
+                toggleSidebar();
+            }
+            
+            // Ctrl/Cmd + P to preview
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                e.preventDefault();
+                if (state.currentFile) togglePreview();
+            }
+        });
+
+        // Enhanced error handling
+        const errorHandler = {
+            handle(error, context) {
+                console.error(`Error in ${context}:`, error);
+                
+                let userMessage = 'An error occurred';
+                
+                if (error.message.includes('401')) {
+                    userMessage = 'Authentication failed. Please check your token.';
+                    tokenManager.clear();
+                } else if (error.message.includes('404')) {
+                    userMessage = 'Resource not found';
+                } else if (error.message.includes('403')) {
+                    userMessage = 'Access denied. Check your token permissions.';
+                } else if (error.message.includes('rate limit')) {
+                    userMessage = 'Rate limit exceeded. Please try again later.';
+                }
+                
+                showToast('error', userMessage);
+            }
+        };
+
+        // Repository management
+        const repoManager = {
+            async selectRepo(repo) {
+                try {
+                    loading.show('Loading repository...');
+                    state.currentRepo = repo.full_name;
+                    elements.currentRepoName.textContent = repo.full_name;
+                    
+                    // Load repository contents
+                    const contents = await github.getContents('', state.currentBranch);
+                    await displayContents(contents);
+                    
+                    showToast('success', `Switched to ${repo.full_name}`);
+                } catch (error) {
+                    errorHandler.handle(error, 'selectRepo');
+                } finally {
+                    loading.hide();
+                }
+            },
+            
+            async createFile(path, content = '') {
+                try {
+                    loading.show('Creating file...');
+                    const result = await github.createFile(path, content);
+                    showToast('success', 'File created successfully');
+                    return result;
+                } catch (error) {
+                    errorHandler.handle(error, 'createFile');
+                } finally {
+                    loading.hide();
+                }
+            },
+            
+            async deleteFile(path) {
+                try {
+                    loading.show('Deleting file...');
+                    const result = await github.deleteFile(path);
+                    showToast('success', 'File deleted successfully');
+                    return result;
+                } catch (error) {
+                    errorHandler.handle(error, 'deleteFile');
+                } finally {
+                    loading.hide();
+                }
+            },
+            
+            async renameFile(oldPath, newPath) {
+                try {
+                    loading.show('Renaming file...');
+                    const result = await github.moveFile(oldPath, newPath);
+                    showToast('success', 'File renamed successfully');
+                    return result;
+                } catch (error) {
+                    errorHandler.handle(error, 'renameFile');
+                } finally {
+                    loading.hide();
+                }
+            }
+        };
+
+        // File tree context menu
+        function setupFileTreeContextMenu() {
+            const contextMenu = document.createElement('div');
+            contextMenu.className = 'hidden fixed bg-[#2d2d2d] rounded shadow-lg py-1 min-w-[200px]';
+            contextMenu.innerHTML = `
+                <div class="px-4 py-2 hover:bg-[#3c3c3c] cursor-pointer" data-action="new-file">New File</div>
+                <div class="px-4 py-2 hover:bg-[#3c3c3c] cursor-pointer" data-action="new-folder">New Folder</div>
+                <div class="border-t border-[#1e1e1e] my-1"></div>
+                <div class="px-4 py-2 hover:bg-[#3c3c3c] cursor-pointer" data-action="rename">Rename</div>
+                <div class="px-4 py-2 hover:bg-[#3c3c3c] cursor-pointer" data-action="delete">Delete</div>
+            `;
+            document.body.appendChild(contextMenu);
+            
+            elements.fileTree.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const target = e.target.closest('.file-tree-item');
+                if (target) {
+                    const rect = target.getBoundingClientRect();
+                    contextMenu.style.top = `${e.clientY}px`;
+                    contextMenu.style.left = `${e.clientX}px`;
+                    contextMenu.classList.remove('hidden');
+                    contextMenu.dataset.path = target.dataset.path;
+                }
+            });
+            
+            document.addEventListener('click', () => {
+                contextMenu.classList.add('hidden');
+            });
+            
+            contextMenu.addEventListener('click', async (e) => {
+                const action = e.target.dataset.action;
+                const path = contextMenu.dataset.path;
+                
+                switch (action) {
+                    case 'new-file':
+                        const fileName = prompt('Enter file name:');
+                        if (fileName) {
+                            await repoManager.createFile(fileName);
+                            await loadRepositoryContents();
+                        }
+                        break;
+                    case 'new-folder':
+                        const folderName = prompt('Enter folder name:');
+                        if (folderName) {
+                            await repoManager.createFile(`${folderName}/.gitkeep`);
+                            await loadRepositoryContents();
+                        }
+                        break;
+                    case 'rename':
+                        if (path) {
+                            const newName = prompt('Enter new name:', path.split('/').pop());
+                            if (newName) {
+                                const newPath = path.replace(/[^/]+$/, newName);
+                                await repoManager.renameFile(path, newPath);
+                                await loadRepositoryContents();
+                            }
+                        }
+                        break;
+                    case 'delete':
+                        if (path) {
+                            if (confirm('Are you sure you want to delete this file?')) {
+                                await repoManager.deleteFile(path);
+                                await loadRepositoryContents();
+                            }
+                        }
+                        break;
+                }
+            });
+        }
+
+        // Language detection
+        function detectLanguage(path) {
+            const ext = path.split('.').pop().toLowerCase();
+            const languageMap = {
+                'md': 'markdown',
+                'txt': 'plaintext',
+                'js': 'javascript',
+                'jsx': 'javascript',
+                'ts': 'typescript',
+                'tsx': 'typescript',
+                'html': 'html',
+                'css': 'css',
+                'json': 'json',
+                'yml': 'yaml',
+                'yaml': 'yaml',
+                'py': 'python',
+                'java': 'java',
+                'cpp': 'cpp',
+                'c': 'c',
+                'go': 'go',
+                'rs': 'rust',
+                'rb': 'ruby',
+                'php': 'php',
+                'sql': 'sql',
+                'sh': 'shell',
+                'bash': 'shell',
+                'zsh': 'shell',
+                'gitignore': 'plaintext'
+            };
+            return languageMap[ext] || 'plaintext';
+        }
+
+        // Preview functionality
+        function togglePreview() {
+            if (elements.preview.classList.contains('hidden')) {
+                const content = state.editor.getValue();
+                const previewContent = marked.parse(content);
+                const previewHtml = `
+                    <!DOCTYPE html>
+                    <html>
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"><\/script>
+                            <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/lib/highlight.min.js"><\/script>
+                            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github-dark.css">
+                            <style>
+                                body {
+                                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                                    line-height: 1.6;
+                                    padding: 2rem;
+                                    max-width: 800px;
+                                    margin: 0 auto;
+                                    color: #e5e7eb;
+                                    background-color: #1e1e1e;
+                                }
+                                pre {
+                                    background-color: #2d2d2d;
+                                    padding: 1rem;
+                                    border-radius: 0.375rem;
+                                    overflow-x: auto;
+                                }
+                                code {
+                                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                                }
+                                img {
+                                    max-width: 100%;
+                                    height: auto;
+                                }
+                                table {
+                                    border-collapse: collapse;
+                                    width: 100%;
+                                    margin: 1rem 0;
+                                }
+                                th, td {
+                                    border: 1px solid #374151;
+                                    padding: 0.5rem;
+                                    text-align: left;
+                                }
+                                th {
+                                    background-color: #2d2d2d;
+                                }
+                                blockquote {
+                                    border-left: 4px solid #4b5563;
+                                    margin: 1rem 0;
+                                    padding-left: 1rem;
+                                    color: #9ca3af;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            ${previewContent}
+                            <script>hljs.highlightAll();<\/script>
+                        </body>
+                    </html>
+                `;
+                elements.previewFrame.srcdoc = previewHtml;
+                elements.preview.classList.remove('hidden');
+                elements.editor.classList.add('hidden');
+                elements.previewBtn.textContent = 'Edit';
+            } else {
+                elements.preview.classList.add('hidden');
+                elements.editor.classList.remove('hidden');
+                elements.previewBtn.textContent = 'Preview';
+            }
+        }
+
+        // Update file tree modified state
+        function updateFileTreeModifiedState(path, modified) {
+            const fileElement = document.querySelector(`[data-path="${path}"]`);
+            if (fileElement) {
+                if (modified) {
+                    fileElement.classList.add('modified');
+                } else {
+                    fileElement.classList.remove('modified');
+                }
             }
         }
     </script>
