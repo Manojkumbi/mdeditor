@@ -33,7 +33,7 @@ But I also get that [other perspective].
 Overall, I believe [your main point].
 ```
 
-👉 Example:
+👉 Example: code
 > In my opinion, learning by doing is better than only theory.  
 > I feel this way because building something helps you remember and understand better.  
 > But I also get that you need basics first.  
