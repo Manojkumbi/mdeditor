@@ -606,13 +606,30 @@
 
                 try {
                     loading.show('Saving file...');
+                    
+                    // First, get the latest SHA
+                    const response = await fetch(`https://api.github.com/repos/${state.currentRepo}/contents/${state.currentFile.path}`, {
+                        headers: {
+                            'Authorization': `token ${github.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to get latest file state');
+                    }
+
+                    const data = await response.json();
+                    const currentSha = data.sha;
+                    
                     const content = state.editor.getValue();
                     const message = `Update ${state.currentFile.name}`;
                     
+                    // Update file with latest SHA
                     const result = await github.updateFile(
                         state.currentFile.path,
                         content,
-                        state.currentFile.sha,
+                        currentSha,
                         message,
                         state.currentBranch
                     );
@@ -637,7 +654,11 @@
                     
                     showToast('success', 'File saved successfully');
                 } catch (error) {
-                    errorHandler.handle(error, 'saveFile');
+                    if (error.message.includes('sha')) {
+                        showToast('error', 'File was modified elsewhere. Please reload and try again.');
+                    } else {
+                        errorHandler.handle(error, 'saveFile');
+                    }
                 } finally {
                     loading.hide();
                 }
@@ -942,14 +963,26 @@
                 loading.show('Loading file...');
                 
                 // Always fetch the latest content from the repository
-                const { content, sha } = await github.getFile(file.path);
+                const response = await fetch(`https://api.github.com/repos/${state.currentRepo}/contents/${file.path}`, {
+                    headers: {
+                        'Authorization': `token ${github.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch file content');
+                }
+
+                const data = await response.json();
+                const content = decodeURIComponent(escape(atob(data.content)));
                 
                 // Update editor
                 state.editor.setValue(content);
                 state.currentFile = {
                     ...file,
                     content,
-                    sha
+                    sha: data.sha
                 };
                 
                 // Update UI
