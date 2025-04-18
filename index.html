@@ -162,27 +162,27 @@
                 <button id="menu-toggle" class="p-2 hover:bg-[#3c3c3c] rounded">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                </svg>
+                  </svg>
                 </button>
                 <div class="flex items-center space-x-2 relative">
                     <span id="current-repo-name" class="text-sm opacity-75">No repository selected</span>
                     <button id="repo-selector" class="p-1 hover:bg-[#3c3c3c] rounded">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </button>
+                </svg>
+              </button>
                     <!-- Repository Dropdown -->
                     <div id="repo-dropdown" class="hidden absolute top-full left-0 mt-1 w-64 bg-[#2d2d2d] rounded shadow-lg overflow-hidden z-50">
                         <div class="p-2 border-b border-[#1e1e1e]">
                             <input type="text" id="repo-search" class="w-full px-2 py-1 bg-[#1e1e1e] rounded text-sm" placeholder="Search repositories...">
-                        </div>
+                </div>
                         <div id="repo-list" class="max-h-64 overflow-y-auto">
                             <!-- Repositories will be populated here -->
-                        </div>
-                    </div>
+                  </div>
                 </div>
-                <span id="current-file" class="text-sm opacity-75">No file selected</span>
               </div>
+                <span id="current-file" class="text-sm opacity-75">No file selected</span>
+            </div>
             <div class="flex items-center space-x-4">
                 <span id="user-name" class="text-sm"></span>
                 <img id="user-avatar" class="w-8 h-8 rounded-full" src="" alt="User avatar">
@@ -191,12 +191,12 @@
                 </button>
                 <button id="save-btn" class="hidden px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 rounded">
                     Save
-              </button>
+                </button>
                 <button id="preview-btn" class="hidden px-3 py-1 text-sm bg-green-600 hover:bg-green-700 rounded">
-                    Preview
-                  </button>
-                </div>
-                  </div>
+                  Preview
+                </button>
+              </div>
+            </div>
 
       <!-- Main Content -->
         <div class="flex-1 flex">
@@ -208,21 +208,21 @@
                     <button id="new-file-btn" class="p-1 hover:bg-[#3c3c3c] rounded">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                  </svg>
+              </svg>
                 </button>
               </div>
                 <!-- File Tree -->
                 <div id="file-tree" class="flex-1 overflow-y-auto p-2">
                     <!-- Files will be populated here -->
-            </div>
-                </div>
+      </div>
+    </div>
 
             <!-- Editor Container -->
             <div class="flex-1 flex flex-col">
                 <div id="editor" class="flex-1"></div>
                 <div id="preview" class="hidden flex-1 bg-white">
                     <iframe id="preview-frame" class="w-full h-full"></iframe>
-              </div>
+        </div>
         </div>
       </div>
     </div>
@@ -459,7 +459,7 @@
             toast.textContent = message;
             toast.classList.add('show');
 
-            setTimeout(() => {
+  setTimeout(() => {
                 toast.classList.remove('show');
             }, 3000);
         }
@@ -525,19 +525,17 @@
         const uiManager = {
             toggleSidebar() {
                 const sidebar = document.getElementById('sidebar');
-                const editorContainer = document.querySelector('.editor-container');
+                const editorContainer = document.querySelector('.flex-1.flex.flex-col');
                 
                 if (sidebar.classList.contains('hidden')) {
                     sidebar.classList.remove('hidden');
                     if (editorContainer) {
-                        editorContainer.classList.remove('w-full');
-                        editorContainer.classList.add('w-[calc(100%-16rem)]');
+                        editorContainer.style.width = 'calc(100% - 16rem)';
                     }
                 } else {
                     sidebar.classList.add('hidden');
                     if (editorContainer) {
-                        editorContainer.classList.remove('w-[calc(100%-16rem)]');
-                        editorContainer.classList.add('w-full');
+                        editorContainer.style.width = '100%';
                     }
                 }
             }
@@ -598,6 +596,51 @@
                 } catch (error) {
                     errorHandler.handle(error, 'createNewFolder');
                 }
+            },
+
+            async saveFile() {
+                if (!state.currentFile) {
+                    showToast('error', 'No file is currently open');
+                    return;
+                }
+
+                try {
+                    loading.show('Saving file...');
+                    const content = state.editor.getValue();
+                    const message = `Update ${state.currentFile.name}`;
+                    
+                    const result = await github.updateFile(
+                        state.currentFile.path,
+                        content,
+                        state.currentFile.sha,
+                        message,
+                        state.currentBranch
+                    );
+                    
+                    // Update file info
+                    state.currentFile.sha = result.content.sha;
+                    state.currentFile.content = content;
+                    state.isFileModified = false;
+                    
+                    showToast('success', 'File saved successfully');
+                } catch (error) {
+                    errorHandler.handle(error, 'saveFile');
+                } finally {
+                    loading.hide();
+                }
+            },
+
+            resetFile() {
+                if (!state.currentFile) {
+                    showToast('error', 'No file is currently open');
+                    return;
+                }
+
+                if (confirm('Are you sure you want to reset the file? All unsaved changes will be lost.')) {
+                    state.editor.setValue(state.currentFile.content);
+                    state.isFileModified = false;
+                    showToast('info', 'File reset to last saved state');
+                }
             }
         };
 
@@ -620,7 +663,7 @@
                 // Setup event listeners
                 if (elements.loginBtn) elements.loginBtn.addEventListener('click', handleLogin);
                 if (elements.logoutBtn) elements.logoutBtn.addEventListener('click', handleLogout);
-                if (elements.saveBtn) elements.saveBtn.addEventListener('click', saveFile);
+                if (elements.saveBtn) elements.saveBtn.addEventListener('click', () => fileOperations.saveFile());
                 
                 // Add keyboard shortcut for login
                 if (elements.tokenInput) {
@@ -725,6 +768,41 @@
                         uiManager.toggleSidebar();
                     });
                 }
+
+                // Setup save and reset buttons
+                const saveBtn = document.createElement('button');
+                saveBtn.id = 'save-btn';
+                saveBtn.className = 'px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 rounded ml-2';
+                saveBtn.innerHTML = '💾 Save';
+                saveBtn.addEventListener('click', () => fileOperations.saveFile());
+
+                const resetBtn = document.createElement('button');
+                resetBtn.id = 'reset-btn';
+                resetBtn.className = 'px-3 py-1 text-sm bg-gray-600 hover:bg-gray-700 rounded ml-2';
+                resetBtn.innerHTML = '↺ Reset';
+                resetBtn.addEventListener('click', () => fileOperations.resetFile());
+
+                // Add buttons to the top bar
+                const topBar = document.querySelector('.h-12.bg-[#2d2d2d] .flex.items-center.space-x-4');
+                if (topBar) {
+                    topBar.appendChild(saveBtn);
+                    topBar.appendChild(resetBtn);
+                }
+
+                // Add keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    // Ctrl/Cmd + S to save
+                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                        e.preventDefault();
+                        fileOperations.saveFile();
+                    }
+                    
+                    // Ctrl/Cmd + Z to reset
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                        e.preventDefault();
+                        fileOperations.resetFile();
+                    }
+                });
             } catch (error) {
                 console.error('Initialization error:', error);
                 showToast('error', 'Failed to initialize application');
@@ -845,8 +923,8 @@
                     content,
                     sha
                 };
-  
-  // Update UI
+                
+                // Update UI
                 elements.currentFileDisplay.textContent = file.name;
                 elements.editor.classList.remove('hidden');
                 elements.preview.classList.add('hidden');
@@ -874,35 +952,6 @@
             const fileElement = document.querySelector(`[data-path="${file.path}"]`);
             if (fileElement) {
                 fileElement.classList.add('active');
-            }
-        }
-
-        async function saveFile() {
-            if (!state.currentFile) return;
-            
-            try {
-                const content = state.editor.getValue();
-                const message = `Update ${state.currentFile.name}`;
-                
-                showToast('info', 'Saving changes...');
-                
-                const result = await github.updateFile(
-                    state.currentFile.path,
-                    content,
-                    state.currentFile.sha,
-                    message,
-                    state.currentBranch
-                );
-                
-                // Update file info
-                state.currentFile.sha = result.content.sha;
-                state.currentFile.content = content;
-                state.isFileModified = false;
-                
-                showToast('success', 'Changes saved successfully');
-            } catch (error) {
-                console.error('Error saving file:', error);
-                showToast('error', 'Failed to save changes');
             }
         }
 
@@ -985,27 +1034,6 @@
                 overlay.classList.add('hidden');
             }
         };
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + S to save
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                if (state.currentFile) saveFile();
-            }
-            
-            // Ctrl/Cmd + B to toggle sidebar
-            if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-                e.preventDefault();
-                toggleSidebar();
-            }
-            
-            // Ctrl/Cmd + P to preview
-            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-                e.preventDefault();
-                if (state.currentFile) togglePreview();
-            }
-        });
 
         // Enhanced error handling
         const errorHandler = {
@@ -1109,7 +1137,7 @@
                     div.innerHTML = `
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                        </svg>
+      </svg>
                         <span class="text-sm">${repo.full_name}</span>
                     `;
                     div.addEventListener('click', () => this.selectRepo(repo));
@@ -1195,9 +1223,9 @@
                             }
                         }
                         break;
-                }
-            });
-        }
+    }
+  });
+}
 
         // Language detection
         function detectLanguage(path) {
