@@ -17,7 +17,7 @@ I’m really into [passion or skill], and I enjoy [hobby/interest].
 I’m working towards [your goal or dream].
 ```
 
-👉 Example: code rest
+👉 Example: code rest zest
 > Hi, I’m Kumar. I’m currently pursuing my Master’s in Computer Science.  
 > I’m really into databases and software development, and I enjoy sketching and exploring new tech tools.  
 > I’m working towards becoming a skilled dev with a strong story + sales game.
