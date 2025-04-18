@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GitHub Markdown Editor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/mode-markdown.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/theme-monokai.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/theme-github.js"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      #editor {
+        height: 100%;
+        width: 100%;
+        font-size: 14px;
+      }
+      .dark-mode {
+        color-scheme: dark;
+      }
+      .markdown-body h1 {
+        font-size: 2em;
+        padding-bottom: 0.3em;
+      }
+      .markdown-body h2 {
+        font-size: 1.5em;
+        padding-bottom: 0.3em;
+      }
+      .markdown-body h3 {
+        font-size: 1.25em;
+      }
+      .markdown-body h4 {
+        font-size: 1em;
+      }
+      .markdown-body p,
+      .markdown-body blockquote,
+      .markdown-body ul,
+      .markdown-body ol,
+      .markdown-body dl,
+      .markdown-body table,
+      .markdown-body pre {
+        margin-bottom: 16px;
+      }
+      .markdown-body code {
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-size: 85%;
+      }
+      .markdown-body pre {
+        padding: 16px;
+        border-radius: 3px;
+        overflow: auto;
+        line-height: 1.45;
+      }
+      .markdown-body blockquote {
+        padding: 0 1em;
+        border-left-width: 4px;
+      }
+      .markdown-body table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      .markdown-body table th,
+      .markdown-body table td {
+        padding: 6px 13px;
+        border-width: 1px;
+      }
+    </style>
+  </head>
+  <body
+    class="h-full flex flex-col bg-gray-50 text-gray-900 transition-colors duration-200"
+    id="body"
+  >
+    <!-- Login Modal -->
+    <div
+      id="login-modal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
+      <div
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-md"
+      >
+        <h2 class="text-2xl font-bold mb-6 text-center dark:text-white">
+          Login to GitHub Markdown Editor
+        </h2>
+        <form id="login-form" class="space-y-4">
+          <div>
+            <label
+              for="username"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >Username</label
+            >
+            <input
+              type="text"
+              id="username"
+              name="username"
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="password"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >Password</label
+            >
+            <input
+              type="password"
+              id="password"
+              name="password"
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+              required
+            />
+          </div>
+          <div>
+            <button
+              type="submit"
+              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Login
+            </button>
+          </div>
+          <div class="text-sm text-center">
+            <a
+              href="#"
+              class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+            >
+              Forgot your password?
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Main Application (Initially Hidden) -->
+    <div id="app" class="hidden h-full flex flex-col">
+      <!-- Navigation Bar -->
+      <nav class="bg-white dark:bg-gray-800 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex justify-between h-16">
+            <div class="flex items-center">
+              <div class="flex-shrink-0 flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-8 w-8 text-indigo-600 dark:text-indigo-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                <span
+                  class="ml-2 text-xl font-bold text-gray-900 dark:text-white"
+                  >MD Editor</span
+                >
+              </div>
+            </div>
+
+            <div class="flex-1 flex items-center justify-center px-6">
+              <div class="w-full max-w-md">
+                <div class="relative">
+                  <input
+                    id="search-input"
+                    class="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Search files..."
+                  />
+                  <div
+                    class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+                  >
+                    <svg
+                      class="h-5 w-5 text-gray-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center">
+              <button
+                id="theme-toggle"
+                class="p-2 rounded-md text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+              >
+                <svg
+                  id="dark-icon"
+                  class="h-6 w-6"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                  />
+                </svg>
+                <svg
+                  id="light-icon"
+                  class="h-6 w-6 hidden"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                  />
+                </svg>
+              </button>
+
+              <div class="ml-4 relative">
+                <div>
+                  <button
+                    id="user-menu-button"
+                    class="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    <img
+                      class="h-8 w-8 rounded-full"
+                      src="/api/placeholder/32/32"
+                      alt="User"
+                    />
+                  </button>
+                </div>
+                <div
+                  id="user-dropdown"
+                  class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-10"
+                >
+                  <span
+                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700"
+                  >
+                    <strong id="current-user">Username</strong>
+                  </span>
+                  <a
+                    href="#"
+                    id="logout-btn"
+                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >Sign out</a
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Main Content -->
+      <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar -->
+        <aside
+          class="w-64 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col"
+        >
+          <div
+            class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center"
+          >
+            <h2 class="text-lg font-medium text-gray-900 dark:text-white">
+              Files
+            </h2>
+            <button
+              id="new-file-btn"
+              class="p-1 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
+          <div class="overflow-y-auto flex-1">
+            <ul id="file-list" class="py-2"></ul>
+          </div>
+        </aside>
+
+        <!-- Content Area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+          <div id="editor-container" class="hidden flex-1 flex flex-col">
+            <div
+              class="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex justify-between items-center"
+            >
+              <div class="flex items-center space-x-2">
+                <input
+                  id="file-name-input"
+                  class="text-lg font-medium py-1 px-2 border border-transparent rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-transparent text-gray-900 dark:text-white"
+                  readonly
+                />
+                <button
+                  id="rename-file-btn"
+                  class="p-1 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div class="flex space-x-2">
+                <button
+                  id="save-btn"
+                  class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Save
+                </button>
+                <button
+                  id="preview-toggle"
+                  class="inline-flex items-center px-3 py-1 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Preview
+                </button>
+              </div>
+            </div>
+            <div class="flex-1 flex overflow-hidden">
+              <div id="editor-view" class="flex-1 overflow-hidden"></div>
+              <div
+                id="preview-view"
+                class="hidden flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-800"
+              >
+                <div
+                  id="preview-content"
+                  class="markdown-body max-w-3xl mx-auto prose dark:prose-invert"
+                ></div>
+              </div>
+            </div>
+          </div>
+          <div
+            id="welcome-view"
+            class="flex-1 flex items-center justify-center p-6 bg-gray-50 dark:bg-gray-900"
+          >
+            <div class="text-center max-w-md">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-16 w-16 mx-auto text-indigo-600 dark:text-indigo-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <h2 class="mt-4 text-xl font-bold text-gray-900 dark:text-white">
+                Welcome to Markdown Editor
+              </h2>
+              <p class="mt-2 text-gray-600 dark:text-gray-400">
+                Create a new file or select an existing one to get started.
+              </p>
+              <button
+                id="welcome-new-file-btn"
+                class="mt-6 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Create New File
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New File Modal -->
+    <div
+      id="new-file-modal"
+      class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
+      <div
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-md"
+      >
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          Create New File
+        </h3>
+        <form id="new-file-form" class="space-y-4">
+          <div>
+            <label
+              for="new-file-name"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >File Name</label
+            >
+            <div class="mt-1 flex rounded-md shadow-sm">
+              <input
+                type="text"
+                id="new-file-name"
+                class="flex-1 min-w-0 block w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                placeholder="example.md"
+              />
+            </div>
+          </div>
+          <div class="flex justify-end space-x-3">
+            <button
+              type="button"
+              id="cancel-new-file"
+              class="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Create
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // DOM Elements
+      const loginModal = document.getElementById("login-modal");
+      const loginForm = document.getElementById("login-form");
+      const app = document.getElementById("app");
+      const currentUser = document.getElementById("current-user");
+      const userMenuButton = document.getElementById("user-menu-button");
+      const userDropdown = document.getElementById("user-dropdown");
+      const logoutBtn = document.getElementById("logout-btn");
+      const themeToggle = document.getElementById("theme-toggle");
+      const darkIcon = document.getElementById("dark-icon");
+      const lightIcon = document.getElementById("light-icon");
+      const fileList = document.getElementById("file-list");
+      const newFileBtn = document.getElementById("new-file-btn");
+      const welcomeNewFileBtn = document.getElementById("welcome-new-file-btn");
+      const newFileModal = document.getElementById("new-file-modal");
+      const newFileForm = document.getElementById("new-file-form");
+      const cancelNewFile = document.getElementById("cancel-new-file");
+      const fileNameInput = document.getElementById("file-name-input");
+      const renameFileBtn = document.getElementById("rename-file-btn");
+      const saveBtn = document.getElementById("save-btn");
+      const previewToggle = document.getElementById("preview-toggle");
+      const editorView = document.getElementById("editor-view");
+      const previewView = document.getElementById("preview-view");
+      const previewContent = document.getElementById("preview-content");
+      const editorContainer = document.getElementById("editor-container");
+      const welcomeView = document.getElementById("welcome-view");
+      const searchInput = document.getElementById("search-input");
+      const body = document.getElementById("body");
+
+      // State
+      let state = {
+        user: null,
+        files: [],
+        currentFile: null,
+        darkMode: false,
+        previewMode: false,
+        editor: null,
+      };
+
+      // Initialize Ace Editor
+      function initEditor() {
+        state.editor = ace.edit("editor-view");
+        state.editor.setTheme("ace/theme/github");
+        state.editor.session.setMode("ace/mode/markdown");
+        state.editor.setOptions({
+          fontSize: "14px",
+          showPrintMargin: false,
+          wrap: true,
+        });
+      }
+
+      // Toggle dark/light mode
+      function toggleDarkMode() {
+        state.darkMode = !state.darkMode;
+
+        if (state.darkMode) {
+          body.classList.add("dark-mode");
+          body.classList.add("bg-gray-900");
+          body.classList.remove("bg-gray-50");
+          darkIcon.classList.add("hidden");
+          lightIcon.classList.remove("hidden");
+          state.editor?.setTheme("ace/theme/monokai");
+        } else {
+          body.classList.remove("dark-mode");
+          body.classList.remove("bg-gray-900");
+          body.classList.add("bg-gray-50");
+          darkIcon.classList.remove("hidden");
+          lightIcon.classList.add("hidden");
+          state.editor?.setTheme("ace/theme/github");
+        }
+      }
+
+      // Handle login
+      function handleLogin(e) {
+        e.preventDefault();
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        // Simple mock authentication
+        if (username && password) {
+          state.user = username;
+          currentUser.textContent = username;
+          loginModal.classList.add("hidden");
+          app.classList.remove("hidden");
+          loadFiles();
+          initEditor();
+        } else {
+          alert("Please enter both username and password");
+        }
+      }
+
+      // Handle logout
+      function handleLogout() {
+        state.user = null;
+        app.classList.add("hidden");
+        loginModal.classList.remove("hidden");
+        document.getElementById("username").value = "";
+        document.getElementById("password").value = "";
+        state.files = [];
+        state.currentFile = null;
+      }
+
+      // Toggle user dropdown
+      function toggleUserDropdown() {
+        userDropdown.classList.toggle("hidden");
+      }
+
+      // Load files (mock)
+      function loadFiles() {
+        // Mock data
+        state.files = [
+          {
+            id: 1,
+            name: "README.md",
+            content:
+              "# README\n\nThis is a sample readme file.\n\n## Features\n\n- Markdown editing\n- File management\n- Dark mode support",
+          },
+          {
+            id: 2,
+            name: "notes.md",
+            content:
+              "# My Notes\n\nThese are some important notes.\n\n- Item 1\n- Item 2\n- Item 3",
+          },
+          {
+            id: 3,
+            name: "todo.md",
+            content:
+              "# To-Do List\n\n- [ ] Complete project\n- [ ] Update documentation\n- [x] Setup development environment",
+          },
+        ];
+
+        renderFileList();
+      }
+
+      // Render file list
+      function renderFileList() {
+        fileList.innerHTML = "";
+
+        const filesToRender = searchInput.value
+          ? state.files.filter((file) =>
+              file.name.toLowerCase().includes(searchInput.value.toLowerCase())
+            )
+          : state.files;
+
+        filesToRender.forEach((file) => {
+          const li = document.createElement("li");
+          li.className = `flex items-center justify-between px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
+            state.currentFile && state.currentFile.id === file.id
+              ? "bg-gray-100 dark:bg-gray-700"
+              : ""
+          }`;
+
+          li.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span class="text-gray-800 dark:text-gray-200">${file.name}</span>
+                    </div>
+                    <button class="delete-file-btn p-1 rounded-md text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                `;
+
+          // Open file event
+          li.addEventListener("click", (e) => {
+            if (!e.target.closest(".delete-file-btn")) {
+              openFile(file);
+            }
+          });
+
+          // Delete file event
+          li.querySelector(".delete-file-btn").addEventListener(
+            "click",
+            (e) => {
+              e.stopPropagation();
+              if (confirm(`Are you sure you want to delete ${file.name}?`)) {
+                deleteFile(file);
+              }
+            }
+          );
+
+          fileList.appendChild(li);
+        });
+      }
+
+      // Open file
+      function openFile(file) {
+        state.currentFile = file;
+
+        // Update UI
+        editorContainer.classList.remove("hidden");
+        welcomeView.classList.add("hidden");
+        fileNameInput.value = file.name;
+        state.editor.setValue(file.content, -1);
+
+        // Update file list highlighting
+        renderFileList();
+
+        if (state.previewMode) {
+          updatePreview();
+        }
+      }
+
+      // Save current file
+      function saveFile() {
+        if (!state.currentFile) return;
+
+        state.currentFile.content = state.editor.getValue();
+
+        // If in preview mode, update the preview
+        if (state.previewMode) {
+          updatePreview();
+        }
+
+        // Show success notification
+        alert(`${state.currentFile.name} saved successfully!`);
+      }
+
+      // Delete file
+      function deleteFile(file) {
+        state.files = state.files.filter((f) => f.id !== file.id);
+
+        if (state.currentFile && state.currentFile.id === file.id) {
+          state.currentFile = null;
+          editorContainer.classList.add("hidden");
+          welcomeView.classList.remove("hidden");
+        }
+
+        renderFileList();
+      }
+
+      // Create new file
+      function createNewFile(name) {
+        if (!name.trim()) {
+          alert("File name cannot be empty");
+          return;
+        }
+
+        // Add .md extension if not present
+        if (!name.toLowerCase().endsWith(".md")) {
+          name += ".md";
+        }
+
+        // Check if file with same name exists
+        if (
+          state.files.some(
+            (file) => file.name.toLowerCase() === name.toLowerCase()
+          )
+        ) {
+          alert("A file with this name already exists");
+          return;
+        }
+
+        const newFile = {
+          id: Date.now(),
+          name: name,
+          content: `# ${name.replace(".md", "")}\n\n`,
+        };
+
+        state.files.push(newFile);
+        renderFileList();
+        openFile(newFile);
+      }
+
+      // Rename current file
+      function renameCurrentFile() {
+        if (!state.currentFile) return;
+
+        fileNameInput.readOnly = false;
+        fileNameInput.focus();
+        fileNameInput.select();
+      }
+
+      // Handle file name input blur
+      function handleFileNameBlur() {
+        if (!state.currentFile) return;
+
+        const newName = fileNameInput.value.trim();
+
+        if (!newName) {
+          fileNameInput.value = state.currentFile.name;
+        } else if (newName !== state.currentFile.name) {
+          // Add .md extension if not present
+          const finalName = !newName.toLowerCase().endsWith(".md")
+            ? newName + ".md"
+            : newName;
+
+          // Check if file with same name exists
+          if (
+            state.files.some(
+              (file) =>
+                file.id !== state.currentFile.id &&
+                file.name.toLowerCase() === finalName.toLowerCase()
+            )
+          ) {
+            alert("A file with this name already exists");
+            fileNameInput.value = state.currentFile.name;
+          } else {
+            state.currentFile.name = finalName;
+            fileNameInput.value = finalName;
+            renderFileList();
+          }
+        }
+
+        fileNameInput.readOnly = true;
+      }
+
+      // Toggle preview mode
+      function togglePreview() {
+        state.previewMode = !state.previewMode;
+
+        if (state.previewMode) {
+          editorView.classList.add("hidden");
+          previewView.classList.remove("hidden");
+          previewToggle.textContent = "Edit";
+          updatePreview();
+        } else {
+          editorView.classList.remove("hidden");
+          previewView.classList.add("hidden");
+          previewToggle.textContent = "Preview";
+        }
+      }
+
+      // Update preview content
+      function updatePreview() {
+        if (!state.currentFile) return;
+
+        const markdown = state.editor.getValue();
+        const html = marked.parse(markdown);
+        previewContent.innerHTML = html;
+      }
+
+      // Show new file modal
+      function showNewFileModal() {
+        newFileModal.classList.remove("hidden");
+        document.getElementById("new-file-name").value = "";
+        document.getElementById("new-file-name").focus();
+      }
+
+      // Hide new file modal
+      function hideNewFileModal() {
+        newFileModal.classList.add("hidden");
+      }
+
+      // Handle new file form submission
+      function handleNewFileSubmit(e) {
+        e.preventDefault();
+        const fileName = document.getElementById("new-file-name").value.trim();
+        if (fileName) {
+          createNewFile(fileName);
+          hideNewFileModal();
+        }
+      }
+
+      // Handle search input
+      function handleSearch() {
+        renderFileList();
+      }
+
+      // Apply saved theme if exists
+      function applySavedTheme() {
+        const savedDarkMode = localStorage.getItem("darkMode") === "true";
+        if (savedDarkMode) {
+          state.darkMode = true;
+          toggleDarkMode();
+        }
+      }
+
+      // Save theme preference
+      function saveThemePreference() {
+        localStorage.setItem("darkMode", state.darkMode);
+      }
+
+      // Event Listeners
+      document.addEventListener("DOMContentLoaded", function () {
+        // Auth related
+        loginForm.addEventListener("submit", handleLogin);
+        logoutBtn.addEventListener("click", handleLogout);
+
+        // UI toggles
+        userMenuButton.addEventListener("click", toggleUserDropdown);
+        themeToggle.addEventListener("click", () => {
+          toggleDarkMode();
+          saveThemePreference();
+        });
+
+        // File operations
+        newFileBtn.addEventListener("click", showNewFileModal);
+        welcomeNewFileBtn.addEventListener("click", showNewFileModal);
+        newFileForm.addEventListener("submit", handleNewFileSubmit);
+        cancelNewFile.addEventListener("click", hideNewFileModal);
+        saveBtn.addEventListener("click", saveFile);
+        previewToggle.addEventListener("click", togglePreview);
+        renameFileBtn.addEventListener("click", renameCurrentFile);
+        fileNameInput.addEventListener("blur", handleFileNameBlur);
+        fileNameInput.addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            this.blur();
+          }
+        });
+
+        // Search
+        searchInput.addEventListener("input", handleSearch);
+
+        // Hide dropdown when clicking outside
+        document.addEventListener("click", function (e) {
+          if (
+            !e.target.closest("#user-menu-button") &&
+            !e.target.closest("#user-dropdown")
+          ) {
+            userDropdown.classList.add("hidden");
+          }
+        });
+
+        // Apply saved theme
+        applySavedTheme();
+
+        // For demo purposes, automatically login
+        // Comment out for production
+        // setTimeout(() => {
+        //     document.getElementById('username').value = 'demo';
+        //     document.getElementById('password').value = 'password';
+        //     loginForm.dispatchEvent(new Event('submit'));
+        // }, 500);
+      });
+
+      // Key command support
+      document.addEventListener("keydown", function (e) {
+        // Save on Ctrl+S or Cmd+S
+        if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+          e.preventDefault();
+          if (state.currentFile) {
+            saveFile();
+          }
+        }
+
+        // Toggle preview on Ctrl+P or Cmd+P
+        if ((e.ctrlKey || e.metaKey) && e.key === "p") {
+          e.preventDefault();
+          if (state.currentFile) {
+            togglePreview();
+          }
+        }
+      });
+
+      // Create div for editor if it doesn't exist
+      if (!document.getElementById("editor")) {
+        const editorDiv = document.createElement("div");
+        editorDiv.id = "editor";
+        editorView.appendChild(editorDiv);
+      }
+    </script>
+  </body>
+</html>
