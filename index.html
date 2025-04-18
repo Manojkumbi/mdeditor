@@ -108,7 +108,7 @@
     </div>
 
     <!-- Main IDE Interface -->
-    <div id="ide" class="hidden h-full flex flex-col">
+    <div id="app" class="hidden h-full flex flex-col">
         <!-- Top Bar -->
         <div class="h-12 bg-[#2d2d2d] border-b border-[#1e1e1e] flex items-center px-4 justify-between">
             <div class="flex items-center space-x-4">
@@ -161,6 +161,15 @@
     <!-- Toast Container -->
     <div id="toast" class="toast" role="alert"></div>
 
+    <div id="repo-dropdown-content" class="hidden absolute top-full right-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded shadow-lg overflow-hidden">
+        <!-- Repository list will be populated here -->
+    </div>
+
+    <span id="current-repo-name" class="text-sm opacity-75">No repository selected</span>
+
+    <div id="dropdown-user-name" class="text-sm font-medium"></div>
+    <div id="dropdown-user-email" class="text-xs text-gray-500"></div>
+
     <script>
         // Global state
         const state = {
@@ -189,7 +198,11 @@
             tokenInput: document.getElementById('github-token'),
             repoDropdown: document.getElementById('repo-dropdown-content'),
             currentRepoName: document.getElementById('current-repo-name'),
-            logoutBtn: document.getElementById('logout-btn')
+            logoutBtn: document.getElementById('logout-btn'),
+            userName: document.getElementById('user-name'),
+            userAvatar: document.getElementById('user-avatar'),
+            dropdownUserName: document.getElementById('dropdown-user-name'),
+            dropdownUserEmail: document.getElementById('dropdown-user-email')
         };
 
         // Configuration
@@ -270,7 +283,8 @@
           token: '',
           
           init(token) {
-              this.token = token;
+              // Ensure token is properly formatted
+              this.token = token.startsWith('ghp_') ? token : `ghp_${token}`;
           },
           
           async getUser() {
@@ -284,10 +298,10 @@
                   
                   if (!response.ok) {
                       if (response.status === 401) {
-                          tokenManager.clear(); // Clear invalid token
-                          throw new Error('Token is invalid or expired');
+                          tokenManager.clear();
+                          throw new Error('Invalid token. Please make sure you\'re using a valid Personal Access Token.');
                       }
-                      throw new Error('Failed to get user info');
+                      throw new Error(`GitHub API Error: ${response.status}`);
                   }
                   
                   return response.json();
@@ -354,13 +368,13 @@
 
       // Update the login handler
       async function handleLogin() {
-          const token = elements.tokenInput.value.trim();
-          if (!token) {
-              showToast('error', 'Please enter your GitHub token');
-              return;
-          }
-          
           try {
+              const token = elements.tokenInput.value.trim();
+              if (!token) {
+                  showToast('error', 'Please enter your GitHub token');
+                  return;
+              }
+
               showToast('info', 'Connecting to GitHub...');
               
               // Initialize GitHub API with token
@@ -368,16 +382,19 @@
               
               // Test the token by getting user info
               const user = await github.getUser();
+              if (!user || !user.login) {
+                  throw new Error('Invalid response from GitHub');
+              }
               
               // Save token only after successful authentication
               tokenManager.save(token);
               
               // Update UI with user info
-              updateUserInfo(user);
+              await updateUserInfo(user);
               
               // Get and display repositories
               const repos = await github.getRepos();
-              populateRepoList(repos);
+              await populateRepoList(repos);
               
               // Show main interface
               elements.loginScreen.classList.add('hidden');
@@ -386,15 +403,41 @@
               showToast('success', 'Successfully connected!');
           } catch (error) {
               console.error('Login error:', error);
-              showToast('error', 'Invalid token or connection failed');
               tokenManager.clear(); // Clear invalid token
+              elements.tokenInput.value = ''; // Clear input field
+              showToast('error', error.message || 'Failed to connect to GitHub');
           }
       }
 
       // Update user info
       function updateUserInfo(user) {
-          elements.currentFileDisplay.textContent = user.login;
-          elements.currentRepoName.textContent = user.login;
+          try {
+              // Get all required elements
+              const userElements = {
+                  name: document.getElementById('user-name'),
+                  avatar: document.getElementById('user-avatar'),
+                  dropdownName: document.getElementById('dropdown-user-name'),
+                  dropdownEmail: document.getElementById('dropdown-user-email')
+              };
+
+              // Check if all elements exist
+              Object.entries(userElements).forEach(([key, element]) => {
+                  if (!element) {
+                      throw new Error(`Required element not found: ${key}`);
+                  }
+              });
+
+              // Update the elements
+              userElements.name.textContent = user.login;
+              userElements.avatar.src = user.avatar_url || 'default-avatar.png';
+              userElements.dropdownName.textContent = user.name || user.login;
+              userElements.dropdownEmail.textContent = user.email || 'No email provided';
+              
+          } catch (error) {
+              console.error('Error updating user info:', error);
+              showToast('error', 'Error updating user interface');
+              throw error;
+          }
       }
 
       // Populate repository list
@@ -435,27 +478,35 @@
 
       // Initialize app
       document.addEventListener('DOMContentLoaded', () => {
-          // Check for saved token and attempt auto-login
-          if (tokenManager.exists()) {
-              const token = tokenManager.get();
-              elements.tokenInput.value = token;
-              handleLogin().catch(error => {
-                  console.error('Auto-login failed:', error);
-                  tokenManager.clear(); // Clear invalid token
-              });
-          }
-          
-          // Setup event listeners
-          elements.loginBtn.addEventListener('click', handleLogin);
-          elements.logoutBtn.addEventListener('click', handleLogout);
-          elements.saveBtn.addEventListener('click', saveFile);
-          
-          // Add keyboard shortcut for login
-          elements.tokenInput.addEventListener('keypress', (e) => {
-              if (e.key === 'Enter') {
-                  handleLogin();
+          try {
+              // Validate all required elements exist
+              validateElements();
+
+              // Check for saved token and attempt auto-login
+              if (tokenManager.exists()) {
+                  const token = tokenManager.get();
+                  elements.tokenInput.value = token;
+                  handleLogin().catch(error => {
+                      console.error('Auto-login failed:', error);
+                      tokenManager.clear();
+                  });
               }
-          });
+              
+              // Setup event listeners
+              elements.loginBtn.addEventListener('click', handleLogin);
+              elements.logoutBtn.addEventListener('click', handleLogout);
+              elements.saveBtn.addEventListener('click', saveFile);
+              
+              // Add keyboard shortcut for login
+              elements.tokenInput.addEventListener('keypress', (e) => {
+                  if (e.key === 'Enter') {
+                      handleLogin();
+                  }
+              });
+          } catch (error) {
+              console.error('Initialization error:', error);
+              showToast('error', 'Failed to initialize application');
+          }
       });
 
       // File Operations
@@ -597,6 +648,28 @@
               elements.loginScreen.classList.remove('hidden');
               
               showToast('info', 'Logged out successfully');
+          }
+      }
+
+      // Add error boundary for API calls
+      async function withErrorHandling(fn, errorMessage) {
+          try {
+              return await fn();
+          } catch (error) {
+              console.error(`Error: ${errorMessage}`, error);
+              showToast('error', errorMessage);
+              throw error;
+          }
+      }
+
+      // Validate that all required elements exist
+      function validateElements() {
+          const missingElements = Object.entries(elements)
+              .filter(([_, element]) => !element)
+              .map(([key]) => key);
+
+          if (missingElements.length > 0) {
+              throw new Error(`Missing required elements: ${missingElements.join(', ')}`);
           }
       }
     </script>
