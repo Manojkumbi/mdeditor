@@ -24,15 +24,21 @@ class GitAutoHandler(FileSystemEventHandler):
             # Execute git commands with output capture
             add_result = subprocess.run(['git', 'add', '.'], 
                                      capture_output=True, text=True)
-            print(f"Git add status: {add_result.stdout}")
+            if add_result.returncode != 0:
+                raise Exception(f"Git add failed: {add_result.stderr}")
+            print(f"Git add status: {add_result.stdout or 'Success'}")
             
             commit_result = subprocess.run(['git', 'commit', '-m', f'test {self.commit_counter} of commit'], 
                                         capture_output=True, text=True)
-            print(f"Git commit status: {commit_result.stdout}")
+            if commit_result.returncode != 0:
+                raise Exception(f"Git commit failed: {commit_result.stderr}")
+            print(f"Git commit status: {commit_result.stdout or 'Success'}")
             
             push_result = subprocess.run(['git', 'push'], 
                                       capture_output=True, text=True)
-            print(f"Git push status: {push_result.stdout}")
+            if push_result.returncode != 0:
+                raise Exception(f"Git push failed: {push_result.stderr}")
+            print(f"Git push status: {push_result.stdout or 'Success'}")
             
             self.commit_counter += 1
             print(f"[{current_datetime}] Git operations completed successfully!")
@@ -63,4 +69,4 @@ def main():
     observer.join()
 
 if __name__ == "__main__":
-    main()
+    main() 
