@@ -622,6 +622,19 @@
                     state.currentFile.content = content;
                     state.isFileModified = false;
                     
+                    // Update the save button state
+                    const saveBtn = document.getElementById('save-btn');
+                    if (saveBtn) {
+                        saveBtn.classList.remove('bg-blue-600');
+                        saveBtn.classList.add('bg-gray-600');
+                        saveBtn.disabled = true;
+                        setTimeout(() => {
+                            saveBtn.classList.remove('bg-gray-600');
+                            saveBtn.classList.add('bg-blue-600');
+                            saveBtn.disabled = false;
+                        }, 2000);
+                    }
+                    
                     showToast('success', 'File saved successfully');
                 } catch (error) {
                     errorHandler.handle(error, 'saveFile');
@@ -639,6 +652,20 @@
                 if (confirm('Are you sure you want to reset the file? All unsaved changes will be lost.')) {
                     state.editor.setValue(state.currentFile.content);
                     state.isFileModified = false;
+                    
+                    // Update the save button state
+                    const saveBtn = document.getElementById('save-btn');
+                    if (saveBtn) {
+                        saveBtn.classList.remove('bg-blue-600');
+                        saveBtn.classList.add('bg-gray-600');
+                        saveBtn.disabled = true;
+                        setTimeout(() => {
+                            saveBtn.classList.remove('bg-gray-600');
+                            saveBtn.classList.add('bg-blue-600');
+                            saveBtn.disabled = false;
+                        }, 1000);
+                    }
+                    
                     showToast('info', 'File reset to last saved state');
                 }
             }
@@ -665,14 +692,26 @@
                 if (elements.logoutBtn) elements.logoutBtn.addEventListener('click', handleLogout);
                 if (elements.saveBtn) elements.saveBtn.addEventListener('click', () => fileOperations.saveFile());
                 
-                // Add keyboard shortcut for login
-                if (elements.tokenInput) {
-                    elements.tokenInput.addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter') {
-                            handleLogin();
+                // Add keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    // Prevent browser's default save behavior
+                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (state.currentFile) {
+                            fileOperations.saveFile();
                         }
-                    });
-                }
+                    }
+                    
+                    // Prevent browser's default undo behavior for reset
+                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (state.currentFile) {
+                            fileOperations.resetFile();
+                        }
+                    }
+                }, true); // Use capture phase to ensure our handler runs first
 
                 // Setup file tree context menu
                 setupFileTreeContextMenu();
@@ -789,20 +828,8 @@
                     topBar.appendChild(resetBtn);
                 }
 
-                // Add keyboard shortcuts
-                document.addEventListener('keydown', (e) => {
-                    // Ctrl/Cmd + S to save
-                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                        e.preventDefault();
-                        fileOperations.saveFile();
-                    }
-                    
-                    // Ctrl/Cmd + Z to reset
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-                        e.preventDefault();
-                        fileOperations.resetFile();
-                    }
-                });
+                // Add change listener to editor
+                setupEditorChangeListener();
             } catch (error) {
                 console.error('Initialization error:', error);
                 showToast('error', 'Failed to initialize application');
@@ -1343,6 +1370,24 @@
     } else {
                     fileElement.classList.remove('modified');
                 }
+            }
+        }
+
+        // Add change listener to editor
+        function setupEditorChangeListener() {
+            if (state.editor) {
+                state.editor.getModel().onDidChangeContent(() => {
+                    if (state.currentFile) {
+                        state.isFileModified = true;
+                        // Update save button state
+                        const saveBtn = document.getElementById('save-btn');
+                        if (saveBtn) {
+                            saveBtn.classList.remove('bg-gray-600');
+                            saveBtn.classList.add('bg-blue-600');
+                            saveBtn.disabled = false;
+                        }
+                    }
+                });
             }
         }
     </script>
