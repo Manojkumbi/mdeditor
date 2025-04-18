@@ -188,7 +188,8 @@
             loginBtn: document.getElementById('login-btn'),
             tokenInput: document.getElementById('github-token'),
             repoDropdown: document.getElementById('repo-dropdown-content'),
-            currentRepoName: document.getElementById('current-repo-name')
+            currentRepoName: document.getElementById('current-repo-name'),
+            logoutBtn: document.getElementById('logout-btn')
         };
 
         // Configuration
@@ -229,6 +230,7 @@
       elements.saveBtn.addEventListener('click', saveFile);
       elements.newFileBtn.addEventListener('click', createNewFile);
       elements.menuToggle.addEventListener('click', toggleSidebar);
+      elements.logoutBtn.addEventListener('click', handleLogout);
 
       // Toast notification function
       function showToast(type, message) {
@@ -242,6 +244,27 @@
           }, 3000);
       }
 
+      // Token management functions
+      const tokenManager = {
+          save(token) {
+              localStorage.setItem('github_token', token);
+              localStorage.setItem('token_saved_at', new Date().toISOString());
+          },
+
+          get() {
+              return localStorage.getItem('github_token');
+          },
+
+          clear() {
+              localStorage.removeItem('github_token');
+              localStorage.removeItem('token_saved_at');
+          },
+
+          exists() {
+              return !!this.get();
+          }
+      };
+
       // Simplified GitHub API Integration
       const github = {
           token: '',
@@ -251,14 +274,27 @@
           },
           
           async getUser() {
-              const response = await fetch('https://api.github.com/user', {
-                  headers: {
-                      'Authorization': `token ${this.token}`,
-                      'Accept': 'application/vnd.github.v3+json'
+              try {
+                  const response = await fetch('https://api.github.com/user', {
+                      headers: {
+                          'Authorization': `token ${this.token}`,
+                          'Accept': 'application/vnd.github.v3+json'
+                      }
+                  });
+                  
+                  if (!response.ok) {
+                      if (response.status === 401) {
+                          tokenManager.clear(); // Clear invalid token
+                          throw new Error('Token is invalid or expired');
+                      }
+                      throw new Error('Failed to get user info');
                   }
-              });
-              if (!response.ok) throw new Error('Failed to get user info');
-              return response.json();
+                  
+                  return response.json();
+              } catch (error) {
+                  console.error('GitHub API Error:', error);
+                  throw error;
+              }
           },
           
           async getRepos() {
@@ -316,7 +352,7 @@
           }
       };
 
-      // Simplified login handler
+      // Update the login handler
       async function handleLogin() {
           const token = elements.tokenInput.value.trim();
           if (!token) {
@@ -333,8 +369,8 @@
               // Test the token by getting user info
               const user = await github.getUser();
               
-              // Store token for later use
-              localStorage.setItem('github_token', token);
+              // Save token only after successful authentication
+              tokenManager.save(token);
               
               // Update UI with user info
               updateUserInfo(user);
@@ -351,6 +387,7 @@
           } catch (error) {
               console.error('Login error:', error);
               showToast('error', 'Invalid token or connection failed');
+              tokenManager.clear(); // Clear invalid token
           }
       }
 
@@ -398,16 +435,27 @@
 
       // Initialize app
       document.addEventListener('DOMContentLoaded', () => {
-          // Check for saved token
-          const savedToken = localStorage.getItem('github_token');
-          if (savedToken) {
-              elements.tokenInput.value = savedToken;
-              handleLogin();
+          // Check for saved token and attempt auto-login
+          if (tokenManager.exists()) {
+              const token = tokenManager.get();
+              elements.tokenInput.value = token;
+              handleLogin().catch(error => {
+                  console.error('Auto-login failed:', error);
+                  tokenManager.clear(); // Clear invalid token
+              });
           }
           
           // Setup event listeners
           elements.loginBtn.addEventListener('click', handleLogin);
+          elements.logoutBtn.addEventListener('click', handleLogout);
           elements.saveBtn.addEventListener('click', saveFile);
+          
+          // Add keyboard shortcut for login
+          elements.tokenInput.addEventListener('keypress', (e) => {
+              if (e.key === 'Enter') {
+                  handleLogin();
+              }
+          });
       });
 
       // File Operations
@@ -533,6 +581,24 @@
 
       window.addEventListener('load', checkOrientation);
       window.addEventListener('orientationchange', checkOrientation);
+
+      // Update the logout handler
+      function handleLogout() {
+          const confirmLogout = confirm('Are you sure you want to log out? Your token will be removed.');
+          if (confirmLogout) {
+              tokenManager.clear();
+              state.currentFile = null;
+              state.currentRepo = null;
+              state.isFileModified = false;
+              
+              // Clear UI
+              elements.tokenInput.value = '';
+              elements.app.classList.add('hidden');
+              elements.loginScreen.classList.remove('hidden');
+              
+              showToast('info', 'Logged out successfully');
+          }
+      }
     </script>
 </body>
 </html>
