@@ -542,6 +542,66 @@
             }
         };
 
+        // File Operations
+        const fileOperations = {
+            async createFile(path = '', content = '') {
+                try {
+                    loading.show('Creating file...');
+                    const result = await github.createFile(path, content);
+                    showToast('success', 'File created successfully');
+                    return result;
+                } catch (error) {
+                    errorHandler.handle(error, 'createFile');
+                } finally {
+                    loading.hide();
+                }
+            },
+
+            async createNewFile() {
+                const fileName = prompt('Enter file name:');
+                if (!fileName) return;
+
+                try {
+                    // If we're in a directory, prepend the path
+                    const currentPath = state.currentPath || '';
+                    const fullPath = currentPath ? `${currentPath}/${fileName}` : fileName;
+                    
+                    // Create empty file
+                    await this.createFile(fullPath, '');
+                    
+                    // Reload current directory contents
+                    const contents = await github.getContents(currentPath, state.currentBranch);
+                    await fileTreeManager.displayContents(contents);
+                    
+                    showToast('success', `Created ${fileName}`);
+                } catch (error) {
+                    errorHandler.handle(error, 'createNewFile');
+                }
+            },
+
+            async createNewFolder() {
+                const folderName = prompt('Enter folder name:');
+                if (!folderName) return;
+
+                try {
+                    // If we're in a directory, prepend the path
+                    const currentPath = state.currentPath || '';
+                    const fullPath = currentPath ? `${currentPath}/${folderName}/.gitkeep` : `${folderName}/.gitkeep`;
+                    
+                    // Create .gitkeep file to create the folder
+                    await this.createFile(fullPath, '');
+                    
+                    // Reload current directory contents
+                    const contents = await github.getContents(currentPath, state.currentBranch);
+                    await fileTreeManager.displayContents(contents);
+                    
+                    showToast('success', `Created folder ${folderName}`);
+                } catch (error) {
+                    errorHandler.handle(error, 'createNewFolder');
+                }
+            }
+        };
+
         // Initialize app
         document.addEventListener('DOMContentLoaded', () => {
             try {
@@ -574,6 +634,13 @@
 
                 // Setup file tree context menu
                 setupFileTreeContextMenu();
+
+                // Setup new file button
+                if (elements.newFileBtn) {
+                    elements.newFileBtn.addEventListener('click', () => {
+                        fileOperations.createNewFile();
+                    });
+                }
 
                 // Initialize Monaco Editor
                 require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
@@ -1060,7 +1127,7 @@
             }
         };
 
-        // File tree context menu
+        // Update file tree context menu
         function setupFileTreeContextMenu() {
             const contextMenu = document.createElement('div');
             contextMenu.className = 'hidden fixed bg-[#2d2d2d] rounded shadow-lg py-1 min-w-[200px]';
@@ -1095,18 +1162,10 @@
                 
                 switch (action) {
                     case 'new-file':
-                        const fileName = prompt('Enter file name:');
-                        if (fileName) {
-                            await repoManager.createFile(fileName);
-                            await loadRepositoryContents();
-                        }
+                        await fileOperations.createNewFile();
                         break;
                     case 'new-folder':
-                        const folderName = prompt('Enter folder name:');
-                        if (folderName) {
-                            await repoManager.createFile(`${folderName}/.gitkeep`);
-                            await loadRepositoryContents();
-                        }
+                        await fileOperations.createNewFolder();
                         break;
                     case 'rename':
                         if (path) {
@@ -1126,9 +1185,9 @@
                             }
                         }
                         break;
-    }
-  });
-}
+                }
+            });
+        }
 
         // Language detection
         function detectLanguage(path) {
