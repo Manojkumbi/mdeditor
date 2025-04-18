@@ -164,13 +164,22 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                 </svg>
                 </button>
-                <div class="flex items-center space-x-2">
+                <div class="flex items-center space-x-2 relative">
                     <span id="current-repo-name" class="text-sm opacity-75">No repository selected</span>
                     <button id="repo-selector" class="p-1 hover:bg-[#3c3c3c] rounded">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                </button>
+                        </svg>
+                    </button>
+                    <!-- Repository Dropdown -->
+                    <div id="repo-dropdown" class="hidden absolute top-full left-0 mt-1 w-64 bg-[#2d2d2d] rounded shadow-lg overflow-hidden z-50">
+                        <div class="p-2 border-b border-[#1e1e1e]">
+                            <input type="text" id="repo-search" class="w-full px-2 py-1 bg-[#1e1e1e] rounded text-sm" placeholder="Search repositories...">
+                        </div>
+                        <div id="repo-list" class="max-h-64 overflow-y-auto">
+                            <!-- Repositories will be populated here -->
+                        </div>
+                    </div>
                 </div>
                 <span id="current-file" class="text-sm opacity-75">No file selected</span>
               </div>
@@ -590,6 +599,37 @@
                         }
                     });
                 });
+
+                // Setup repository selector
+                if (elements.repoSelector) {
+                    elements.repoSelector.addEventListener('click', () => {
+                        const dropdown = document.getElementById('repo-dropdown');
+                        dropdown.classList.toggle('hidden');
+                        if (!dropdown.classList.contains('hidden')) {
+                            repoManager.loadRepositories();
+                        }
+                    });
+                }
+                
+                // Setup repository search
+                const repoSearch = document.getElementById('repo-search');
+                if (repoSearch) {
+                    repoSearch.addEventListener('input', (e) => {
+                        const searchTerm = e.target.value.toLowerCase();
+                        const items = document.querySelectorAll('#repo-list > div');
+                        items.forEach(item => {
+                            const repoName = item.querySelector('span').textContent.toLowerCase();
+                            item.style.display = repoName.includes(searchTerm) ? '' : 'none';
+                        });
+                    });
+                }
+                
+                // Close dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('#repo-selector') && !e.target.closest('#repo-dropdown')) {
+                        document.getElementById('repo-dropdown').classList.add('hidden');
+                    }
+                });
             } catch (error) {
                 console.error('Initialization error:', error);
                 showToast('error', 'Failed to initialize application');
@@ -892,11 +932,42 @@
 
         // Repository management
         const repoManager = {
+            async loadRepositories() {
+                try {
+                    loading.show('Loading repositories...');
+                    const repos = await github.getRepos();
+                    this.displayRepositories(repos);
+                } catch (error) {
+                    errorHandler.handle(error, 'loadRepositories');
+                } finally {
+                    loading.hide();
+                }
+            },
+            
+            displayRepositories(repos) {
+                const repoList = document.getElementById('repo-list');
+                repoList.innerHTML = '';
+                
+                repos.forEach(repo => {
+                    const div = document.createElement('div');
+                    div.className = 'px-4 py-2 hover:bg-[#3c3c3c] cursor-pointer flex items-center space-x-2';
+                    div.innerHTML = `
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                        <span class="text-sm">${repo.full_name}</span>
+                    `;
+                    div.addEventListener('click', () => this.selectRepo(repo));
+                    repoList.appendChild(div);
+                });
+            },
+            
             async selectRepo(repo) {
                 try {
                     loading.show('Loading repository...');
                     state.currentRepo = repo.full_name;
                     elements.currentRepoName.textContent = repo.full_name;
+                    elements.repoDropdown.classList.add('hidden');
                     
                     // Load repository contents
                     const contents = await github.getContents('', state.currentBranch);
@@ -905,45 +976,6 @@
                     showToast('success', `Switched to ${repo.full_name}`);
                 } catch (error) {
                     errorHandler.handle(error, 'selectRepo');
-                } finally {
-                    loading.hide();
-                }
-            },
-            
-            async createFile(path, content = '') {
-                try {
-                    loading.show('Creating file...');
-                    const result = await github.createFile(path, content);
-                    showToast('success', 'File created successfully');
-                    return result;
-                } catch (error) {
-                    errorHandler.handle(error, 'createFile');
-                } finally {
-                    loading.hide();
-                }
-            },
-            
-            async deleteFile(path) {
-                try {
-                    loading.show('Deleting file...');
-                    const result = await github.deleteFile(path);
-  showToast('success', 'File deleted successfully');
-                    return result;
-                } catch (error) {
-                    errorHandler.handle(error, 'deleteFile');
-                } finally {
-                    loading.hide();
-                }
-            },
-            
-            async renameFile(oldPath, newPath) {
-                try {
-                    loading.show('Renaming file...');
-                    const result = await github.moveFile(oldPath, newPath);
-                    showToast('success', 'File renamed successfully');
-                    return result;
-                } catch (error) {
-                    errorHandler.handle(error, 'renameFile');
                 } finally {
                     loading.hide();
                 }
