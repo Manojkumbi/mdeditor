@@ -17,7 +17,7 @@ I’m really into [passion or skill], and I enjoy [hobby/interest].
 I’m working towards [your goal or dream].
 ```
 
-👉 Example:
+👉 Example: code
 > Hi, I’m Kumar. I’m currently pursuing my Master’s in Computer Science.  
 > I’m really into databases and software development, and I enjoy sketching and exploring new tech tools.  
 > I’m working towards becoming a skilled dev with a strong story + sales game.
@@ -33,7 +33,7 @@ But I also get that [other perspective].
 Overall, I believe [your main point].
 ```
 
-👉 Example:
+👉 Example: code
 > In my opinion, learning by doing is better than only theory.  
 > I feel this way because building something helps you remember and understand better.  
 > But I also get that you need basics first.  
