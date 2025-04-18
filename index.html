@@ -1,153 +1,307 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GitHub Markdown Editor</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/ace.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/mode-markdown.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/theme-monokai.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/theme-github.js"></script>
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css"
-      rel="stylesheet"
-    />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web IDE</title>
+    <!-- Monaco Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      #editor {
-        height: 100%;
-        width: 100%;
-        font-size: 14px;
-      }
-      .dark-mode {
-        color-scheme: dark;
-      }
-      .markdown-body h1 {
-        font-size: 2em;
-        padding-bottom: 0.3em;
-      }
-      .markdown-body h2 {
-        font-size: 1.5em;
-        padding-bottom: 0.3em;
-      }
-      .markdown-body h3 {
-        font-size: 1.25em;
-      }
-      .markdown-body h4 {
-        font-size: 1em;
-      }
-      .markdown-body p,
-      .markdown-body blockquote,
-      .markdown-body ul,
-      .markdown-body ol,
-      .markdown-body dl,
-      .markdown-body table,
-      .markdown-body pre {
-        margin-bottom: 16px;
-      }
-      .markdown-body code {
-        padding: 0.2em 0.4em;
-        border-radius: 3px;
-        font-size: 85%;
-      }
-      .markdown-body pre {
-        padding: 16px;
-        border-radius: 3px;
-        overflow: auto;
-        line-height: 1.45;
-      }
-      .markdown-body blockquote {
-        padding: 0 1em;
-        border-left-width: 4px;
-      }
-      .markdown-body table {
-        border-collapse: collapse;
-        width: 100%;
-      }
-      .markdown-body table th,
-      .markdown-body table td {
-        padding: 6px 13px;
-        border-width: 1px;
-      }
-      .repo-item:hover .repo-actions {
-        display: flex;
-      }
-      .repo-actions {
-        display: none;
-      }
+        .monaco-editor {
+            height: 100%;
+            width: 100%;
+        }
+        
+        /* Mobile optimization */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .sidebar {
+                width: 200px;
+            }
+            .editor-container {
+                width: calc(100% - 200px);
+            }
+        }
+        
+        /* VS Code-like scrollbar */
+        ::-webkit-scrollbar {
+            width: 14px;
+            height: 14px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background-color: #424242;
+            border: 3px solid transparent;
+            border-radius: 7px;
+            background-clip: padding-box;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background-color: transparent;
+        }
+        
+        /* Dark mode styles */
+        .dark {
+            color-scheme: dark;
+        }
     </style>
-  </head>
-  <body
-    class="h-full flex flex-col bg-gray-50 text-gray-900 transition-colors duration-200"
-    id="body"
-  >
-    <!-- GitHub Login Screen -->
-    <div
-      id="login-screen"
-      class="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-900"
-    >
-      <div class="max-w-md w-full px-6 py-8 bg-white dark:bg-gray-800 shadow-md rounded-lg">
-        <div class="text-center mb-8">
-          <svg
-            class="mx-auto h-12 w-auto text-gray-800 dark:text-white"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"
-            ></path>
-          </svg>
-          <h2 class="mt-4 text-2xl font-bold text-gray-900 dark:text-white">
-            GitHub Markdown Editor
-          </h2>
-          <p class="mt-2 text-gray-600 dark:text-gray-400">
-            Edit markdown files directly from your GitHub repositories
-          </p>
-        </div>
-        
-        <button
-          id="github-login-btn"
-          class="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-800 dark:bg-gray-700 hover:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-        >
-          <svg
-            class="h-5 w-5 mr-2"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="white"
-          >
-            <path
-              d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"
-            />
-          </svg>
-          Sign in with GitHub
-        </button>
-        
-        <div class="mt-6">
-          <div class="relative">
-            <div class="absolute inset-0 flex items-center">
-              <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
+</head>
+<body class="h-full bg-[#1e1e1e] text-white overflow-hidden">
+    <!-- Login Screen -->
+    <div id="login-screen" class="fixed inset-0 flex items-center justify-center bg-[#1e1e1e]">
+        <div class="bg-[#2d2d2d] p-8 rounded-lg shadow-xl w-96">
+            <h2 class="text-2xl font-bold mb-6 text-center">GitHub Web IDE</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">GitHub Username</label>
+                    <input type="text" id="github-username" class="w-full px-3 py-2 bg-[#3c3c3c] rounded border border-[#4c4c4c] focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Repository Name</label>
+                    <input type="text" id="repo-name" class="w-full px-3 py-2 bg-[#3c3c3c] rounded border border-[#4c4c4c] focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">GitHub Client ID</label>
+                    <input type="text" id="client-id" class="w-full px-3 py-2 bg-[#3c3c3c] rounded border border-[#4c4c4c] focus:outline-none focus:border-blue-500">
+                </div>
+                <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded">
+                    Connect to GitHub
+                </button>
             </div>
-            <div class="relative flex justify-center text-sm">
-              <span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or continue with demo</span>
-            </div>
-          </div>
-          
-          <button
-            id="demo-login-btn"
-            class="mt-4 w-full flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Try Demo Mode
-          </button>
         </div>
-      </div>
     </div>
 
-    <!-- Main Application (Initially Hidden) -->
+    <!-- Main IDE Interface -->
+    <div id="ide" class="hidden h-full flex flex-col">
+        <!-- Top Bar -->
+        <div class="h-12 bg-[#2d2d2d] border-b border-[#1e1e1e] flex items-center px-4 justify-between">
+            <div class="flex items-center space-x-4">
+                <button id="menu-toggle" class="p-2 hover:bg-[#3c3c3c] rounded">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+                <span id="current-file" class="text-sm opacity-75">No file selected</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="save-btn" class="hidden px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 rounded">
+                    Save
+                </button>
+                <button id="preview-btn" class="hidden px-3 py-1 text-sm bg-green-600 hover:bg-green-700 rounded">
+                    Preview
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex">
+            <!-- Sidebar -->
+            <div id="sidebar" class="w-64 bg-[#252526] flex flex-col">
+                <!-- File Explorer Header -->
+                <div class="h-10 flex items-center justify-between px-4 bg-[#2d2d2d]">
+                    <span class="text-sm font-medium">EXPLORER</span>
+                    <button id="new-file-btn" class="p-1 hover:bg-[#3c3c3c] rounded">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </button>
+                </div>
+                <!-- File Tree -->
+                <div id="file-tree" class="flex-1 overflow-y-auto p-2">
+                    <!-- Files will be populated here -->
+                </div>
+            </div>
+
+            <!-- Editor Container -->
+            <div class="flex-1 flex flex-col">
+                <div id="editor" class="flex-1"></div>
+                <div id="preview" class="hidden flex-1 bg-white">
+                    <iframe id="preview-frame" class="w-full h-full"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const config = {
+            github: {
+                apiUrl: 'https://api.github.com',
+                clientId: null,
+                token: null
+            }
+        };
+
+        // Initialize Monaco Editor
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
+        require(['vs/editor/editor.main'], function() {
+            window.editor = monaco.editor.create(document.getElementById('editor'), {
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: true },
+                fontSize: 14,
+                lineNumbers: 'on',
+                scrollBeyondLastLine: false,
+                renderWhitespace: 'selection',
+                tabSize: 2
+            });
+        });
+
+        // DOM Elements
+        const loginScreen = document.getElementById('login-screen');
+        const ide = document.getElementById('ide');
+        const loginBtn = document.getElementById('login-btn');
+        const githubUsername = document.getElementById('github-username');
+        const repoName = document.getElementById('repo-name');
+        const clientId = document.getElementById('client-id');
+        const saveBtn = document.getElementById('save-btn');
+        const previewBtn = document.getElementById('preview-btn');
+        const fileTree = document.getElementById('file-tree');
+        const preview = document.getElementById('preview');
+        const previewFrame = document.getElementById('preview-frame');
+        const currentFile = document.getElementById('current-file');
+        const newFileBtn = document.getElementById('new-file-btn');
+        const menuToggle = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+
+        // Event Listeners
+        loginBtn.addEventListener('click', handleLogin);
+        saveBtn.addEventListener('click', handleSave);
+        previewBtn.addEventListener('click', togglePreview);
+        newFileBtn.addEventListener('click', createNewFile);
+        menuToggle.addEventListener('click', toggleSidebar);
+
+        // GitHub Authentication
+        async function handleLogin() {
+            const username = githubUsername.value;
+            const repo = repoName.value;
+            config.github.clientId = clientId.value;
+
+            if (!username || !repo || !config.github.clientId) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            // In a real application, you would implement proper OAuth flow here
+            // For demo purposes, we'll just show the IDE interface
+            loginScreen.classList.add('hidden');
+            ide.classList.remove('hidden');
+
+            // Load repository files
+            await loadRepositoryFiles(username, repo);
+        }
+
+        // File Operations
+        async function loadRepositoryFiles(username, repo) {
+            // In a real application, you would fetch files from GitHub API
+            // For demo, we'll create some sample files
+            const files = [
+                { name: 'index.html', type: 'file', content: '<!DOCTYPE html><html><body><h1>Hello World</h1></body></html>' },
+                { name: 'styles.css', type: 'file', content: 'body { color: blue; }' },
+                { name: 'README.md', type: 'file', content: '# Project\nThis is a sample project.' }
+            ];
+
+            renderFileTree(files);
+        }
+
+        function renderFileTree(files) {
+            fileTree.innerHTML = '';
+            files.forEach(file => {
+                const fileElement = createFileElement(file);
+                fileTree.appendChild(fileElement);
+            });
+        }
+
+        function createFileElement(file) {
+            const div = document.createElement('div');
+            div.className = 'flex items-center space-x-2 p-1 hover:bg-[#2d2d2d] rounded cursor-pointer text-sm';
+            
+            const icon = document.createElement('span');
+            icon.className = 'text-[#c5c5c5]';
+            icon.textContent = file.type === 'file' ? '📄' : '📁';
+            
+            const name = document.createElement('span');
+            name.textContent = file.name;
+            
+            div.appendChild(icon);
+            div.appendChild(name);
+            
+            div.addEventListener('click', () => openFile(file));
+            
+            return div;
+        }
+
+        function openFile(file) {
+            currentFile.textContent = file.name;
+            window.editor.setValue(file.content);
+            
+            const isPreviewable = file.name.endsWith('.md') || file.name.endsWith('.html');
+            previewBtn.classList.toggle('hidden', !isPreviewable);
+            saveBtn.classList.remove('hidden');
+            
+            if (preview.classList.contains('flex')) {
+                updatePreview();
+            }
+        }
+
+        async function handleSave() {
+            const content = window.editor.getValue();
+            // In a real application, you would save to GitHub here
+            alert('File saved successfully!');
+        }
+
+        function togglePreview() {
+            const editorElement = document.getElementById('editor');
+            preview.classList.toggle('hidden');
+            preview.classList.toggle('flex');
+            editorElement.classList.toggle('hidden');
+            
+            if (preview.classList.contains('flex')) {
+                updatePreview();
+            }
+        }
+
+        function updatePreview() {
+            const content = window.editor.getValue();
+            const fileName = currentFile.textContent;
+            
+            if (fileName.endsWith('.md')) {
+                // For markdown, you would use a markdown parser here
+                previewFrame.srcdoc = `<div style="padding: 20px;">${content}</div>`;
+            } else if (fileName.endsWith('.html')) {
+                previewFrame.srcdoc = content;
+            }
+        }
+
+        function createNewFile() {
+            const fileName = prompt('Enter file name:');
+            if (fileName) {
+                const file = { name: fileName, type: 'file', content: '' };
+                const fileElement = createFileElement(file);
+                fileTree.appendChild(fileElement);
+                openFile(file);
+            }
+        }
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('hidden');
+        }
+
+        // Mobile optimization
+        function checkOrientation() {
+            if (window.matchMedia("(max-width: 768px)").matches) {
+                if (window.orientation === 0) {
+                    alert('Please rotate your device to landscape mode for better experience');
+                }
+            }
+        }
+
+        window.addEventListener('load', checkOrientation);
+        window.addEventListener('orientationchange', checkOrientation);
+    </script>
+</body>
+</html>
     <div id="app" class="hidden h-full flex flex-col">
       <!-- Navigation Bar -->
       <nav class="bg-white dark:bg-gray-800 shadow-md">
@@ -791,8 +945,10 @@
       const githubLoginBtn = document.getElementById('github-login-btn');
       const demoLoginBtn = document.getElementById('demo-login-btn');
       const repoSelectionBtn = document.getElementById('repo-selection-btn');
-      const rfilePathBreadcumb = document.getElementById('file-path-breadcrumb');
-
+      const filePathBreadcumb = document.getElementById('file-path-breadcrumb');
+      const  enterDemoMode= document.getElementById('demo-login-btn');
+      
+      
       // Let's implement the GitHub OAuth authentication flow
 // Add these script functions after the existing script in the HTML file
 
@@ -826,94 +982,156 @@ function initApp() {
 }
 
 function setupEventListeners() {
+  // Helper function to safely add event listeners
+  function addEventIfElementExists(elementId, event, handler) {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.addEventListener(event, handler);
+    } else {
+      console.warn(`Element with ID ${elementId} not found`);
+    }
+  }
+  
+  // Get references to frequently used elements
+  const repoSelectionBtn = document.getElementById('repo-selection-btn');
+  const repoDropdownBtn = document.getElementById('repo-dropdown-btn');
+  const repoDropdownContent = document.getElementById('repo-dropdown-content');
+  const branchDropdownContent = document.getElementById('branch-dropdown-content');
+  const searchInput = document.getElementById('search-input');
+  const fileNameInput = document.getElementById('file-name-input');
+  const userDropdown = document.getElementById('user-dropdown');
+  
   // Setup GitHub login button
-  githubLoginBtn.addEventListener('click', initiateGitHubLogin);
+  addEventIfElementExists('github-login-btn', 'click', initiateGitHubLogin);
   
   // Setup demo mode button
-  demoLoginBtn.addEventListener('click', enterDemoMode);
+  addEventIfElementExists('demo-login-btn', 'click', initDemoMode);
   
   // Setup repo selection button in welcome view
-  repoSelectionBtn.addEventListener('click', function() {
-    repoDropdownBtn.click();
-  });
+  if (repoSelectionBtn && repoDropdownBtn) {
+    repoSelectionBtn.addEventListener('click', function() {
+      repoDropdownBtn.click();
+    });
+  }
   
   // Setup repository dropdown
-  repoDropdownBtn.addEventListener('click', toggleRepoDropdown);
+  addEventIfElementExists('repo-dropdown-btn', 'click', toggleRepoDropdown);
   
   // Setup branch dropdown
-  branchDropdownBtn.addEventListener('click', toggleBranchDropdown);
+  addEventIfElementExists('branch-dropdown-btn', 'click', toggleBranchDropdown);
   
   // Setup theme toggle
-  themeToggle.addEventListener('click', toggleTheme);
+  addEventIfElementExists('theme-toggle', 'click', toggleTheme);
   
   // Setup user menu
-  userMenuButton.addEventListener('click', toggleUserDropdown);
+  addEventIfElementExists('user-menu-button', 'click', toggleUserDropdown);
   
   // Setup logout button
-  logoutBtn.addEventListener('click', handleLogout);
+  addEventIfElementExists('logout-btn', 'click', handleLogout);
   
   // Setup preview toggle
-  previewToggle.addEventListener('click', togglePreview);
+  addEventIfElementExists('preview-toggle', 'click', togglePreview);
   
   // Setup save button
-  saveBtn.addEventListener('click', saveChanges);
+  addEventIfElementExists('save-btn', 'click', saveChanges);
   
   // Setup new file button
-  newFileBtn.addEventListener('click', showNewFileModal);
+  addEventIfElementExists('new-file-btn', 'click', showNewFileModal);
   
   // Setup create first file button
-  createFirstFileBtn.addEventListener('click', showNewFileModal);
+  addEventIfElementExists('create-first-file-btn', 'click', showNewFileModal);
   
   // Setup refresh files button
-  refreshFilesBtn.addEventListener('click', refreshFiles);
+  addEventIfElementExists('refresh-files-btn', 'click', refreshFiles);
   
   // Setup search input
-  searchInput.addEventListener('input', filterFiles);
+  if (searchInput) {
+    searchInput.addEventListener('input', filterFiles);
+  }
   
   // Setup rename file button
-  renameFileBtn.addEventListener('click', toggleFileNameEdit);
+  addEventIfElementExists('rename-file-btn', 'click', toggleFileNameEdit);
   
   // Setup file name input
-  fileNameInput.addEventListener('blur', handleFileNameChange);
-  fileNameInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-      this.blur();
-    }
-  });
+  if (fileNameInput) {
+    fileNameInput.addEventListener('blur', handleFileNameChange);
+    fileNameInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        this.blur();
+      }
+    });
+  }
   
   // Setup modal buttons
-  createFileConfirm.addEventListener('click', handleCreateFile);
-  createFileCancel.addEventListener('click', closeNewFileModal);
-  commitConfirm.addEventListener('click', handleCommitChanges);
-  commitCancel.addEventListener('click', closeCommitModal);
+  addEventIfElementExists('create-file-confirm', 'click', handleCreateFile);
+  addEventIfElementExists('create-file-cancel', 'click', closeNewFileModal);
+  addEventIfElementExists('commit-confirm', 'click', handleCommitChanges);
+  addEventIfElementExists('commit-cancel', 'click', closeCommitModal);
   
   // Setup editor change event
   document.addEventListener('editorChanged', function() {
-    isFileModified = true;
-    document.title = `*${currentFile.name} - MD Editor`;
+    if (typeof isFileModified !== 'undefined' && currentFile) {
+      isFileModified = true;
+      document.title = `*${currentFile.name} - MD Editor`;
+    }
   });
   
   // Close dropdowns when clicking elsewhere
   document.addEventListener('click', function(e) {
     // If clicking outside the repo dropdown
-    if (!e.target.closest('#repo-selector') && repoDropdownContent.classList.contains('block')) {
+    if (repoDropdownContent && 
+        !e.target.closest('#repo-selector') && 
+        repoDropdownContent.classList.contains('block')) {
       repoDropdownContent.classList.replace('block', 'hidden');
     }
     
     // If clicking outside the branch dropdown
-    if (!e.target.closest('#branch-selector') && branchDropdownContent.classList.contains('block')) {
+    if (branchDropdownContent && 
+        !e.target.closest('#branch-selector') && 
+        branchDropdownContent.classList.contains('block')) {
       branchDropdownContent.classList.replace('block', 'hidden');
     }
     
     // If clicking outside the user dropdown
-    if (!e.target.closest('#user-menu-button') && !e.target.closest('#user-dropdown') && 
+    if (userDropdown && 
+        !e.target.closest('#user-menu-button') && 
+        !e.target.closest('#user-dropdown') && 
         userDropdown.classList.contains('block')) {
       userDropdown.classList.replace('block', 'hidden');
     }
   });
+  
+  // Setup keyboard shortcuts
+  document.addEventListener('keydown', function(e) {
+    // Ctrl/Cmd + S to save
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      saveChanges();
+    }
+    
+    // Ctrl/Cmd + P to preview
+    if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+      e.preventDefault();
+      togglePreview();
+    }
+  });
+  
+  // Handle window beforeunload to warn about unsaved changes
+  window.addEventListener('beforeunload', function(e) {
+    if (typeof isFileModified !== 'undefined' && isFileModified) {
+      const message = 'You have unsaved changes that will be lost if you leave.';
+      e.returnValue = message;
+      return message;
+    }
+  });
 }
 
-// GitHub OAuth Authentication Functions
+
+
+
+
+
+
 function initiateGitHubLogin() {
   // GitHub OAuth configuration
   const clientId = 'Ov23liGkKAgdipFL14fp'; // Replace with actual client ID
@@ -1587,7 +1805,7 @@ function handleLogout() {
   
   // Show login screen
   loginScreen.classList.remove('hidden');
-  app.classList.add('hidden');
+  ide.classList.add('hidden');
   
   // Reset state
   currentFile = null;
@@ -1598,4 +1816,1209 @@ function handleLogout() {
   
   showToast('Logged out successfully', 'success');
 }
+
+// Demo mode implementation for GitHub Markdown Editor
+
+// Demo data structures
+const demoData = {
+  repositories: [
+    { 
+      name: 'demo-project-docs', 
+      description: 'Documentation for Demo Project',
+      default_branch: 'main'
+    },
+    { 
+      name: 'markdown-notes', 
+      description: 'Personal Markdown Notes',
+      default_branch: 'main'
+    },
+    { 
+      name: 'blog-posts', 
+      description: 'Blog Post Drafts',
+      default_branch: 'main'
+    }
+  ],
+  branches: ['main', 'develop', 'feature/new-docs'],
+  files: {
+    'demo-project-docs': {
+      'main': {
+        '/': [
+          { name: 'README.md', type: 'file', path: 'README.md', content: '# Demo Project Documentation\n\nWelcome to the demo project documentation.\n\n## Getting Started\n\nThis is a placeholder for getting started instructions.\n\n## Features\n\n- Feature 1\n- Feature 2\n- Feature 3\n\n## Contributing\n\nGuidelines for contributing to this project.\n' },
+          { name: 'api', type: 'dir', path: 'api' },
+          { name: 'guides', type: 'dir', path: 'guides' }
+        ],
+        '/api': [
+          { name: 'api-overview.md', type: 'file', path: 'api/api-overview.md', content: '# API Documentation\n\n## Endpoints\n\n### GET /api/v1/users\n\nReturns a list of users.\n\n### POST /api/v1/login\n\nAuthenticate a user.\n' },
+          { name: 'auth.md', type: 'file', path: 'api/auth.md', content: '# Authentication Guide\n\nThis document covers the authentication methods for the API.\n\n## JWT Authentication\n\nThis API uses JSON Web Tokens for authentication.\n' }
+        ],
+        '/guides': [
+          { name: 'getting-started.md', type: 'file', path: 'guides/getting-started.md', content: '# Getting Started Guide\n\nFollow these steps to get started with the project.\n\n## Installation\n\n```bash\nnpm install my-demo-project\n```\n\n## Configuration\n\nCreate a `.env` file with the following variables:\n\n```\nAPI_KEY=your_api_key\nDEBUG=false\n```\n' },
+          { name: 'troubleshooting.md', type: 'file', path: 'guides/troubleshooting.md', content: '# Troubleshooting Guide\n\n## Common Issues\n\n### Application won\'t start\n\nCheck if the port is already in use.\n\n### API returns 401\n\nVerify your authentication token is valid and not expired.\n' }
+        ]
+      }
+    },
+    'markdown-notes': {
+      'main': {
+        '/': [
+          { name: 'README.md', type: 'file', path: 'README.md', content: '# My Markdown Notes\n\nThis repository contains personal notes written in Markdown.\n' },
+          { name: 'web-development', type: 'dir', path: 'web-development' },
+          { name: 'ideas.md', type: 'file', path: 'ideas.md', content: '# Project Ideas\n\n## Web Application Ideas\n\n- Task management system\n- Recipe sharing platform\n- Personal finance tracker\n\n## Mobile App Ideas\n\n- Habit tracker\n- Language learning flashcards\n- Hiking trail finder\n' }
+        ],
+        '/web-development': [
+          { name: 'html-basics.md', type: 'file', path: 'web-development/html-basics.md', content: '# HTML Basics\n\n## Document Structure\n\n```html\n<!DOCTYPE html>\n<html>\n<head>\n  <title>Page Title</title>\n</head>\n<body>\n  <h1>This is a Heading</h1>\n  <p>This is a paragraph.</p>\n</body>\n</html>\n```\n' },
+          { name: 'css-tricks.md', type: 'file', path: 'web-development/css-tricks.md', content: '# CSS Tricks\n\n## Flexbox Layout\n\n```css\n.container {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n}\n```\n\n## CSS Grid\n\n```css\n.grid {\n  display: grid;\n  grid-template-columns: repeat(3, 1fr);\n  grid-gap: 20px;\n}\n```\n' },
+          { name: 'javascript-notes.md', type: 'file', path: 'web-development/javascript-notes.md', content: '# JavaScript Notes\n\n## Arrow Functions\n\n```javascript\n// Traditional function\nfunction add(a, b) {\n  return a + b;\n}\n\n// Arrow function\nconst add = (a, b) => a + b;\n```\n\n## Promises\n\n```javascript\nfetch(\'https://api.example.com/data\')\n  .then(response => response.json())\n  .then(data => console.log(data))\n  .catch(error => console.error(\'Error:\', error));\n```\n' }
+        ]
+      }
+    },
+    'blog-posts': {
+      'main': {
+        '/': [
+          { name: 'README.md', type: 'file', path: 'README.md', content: '# Blog Post Drafts\n\nThis repository contains drafts for blog posts.\n' },
+          { name: 'tech', type: 'dir', path: 'tech' },
+          { name: 'personal', type: 'dir', path: 'personal' }
+        ],
+        '/tech': [
+          { name: 'react-hooks-guide.md', type: 'file', path: 'tech/react-hooks-guide.md', content: '# A Complete Guide to React Hooks\n\n## Introduction\n\nReact Hooks were introduced in React 16.8 as a way to use state and other React features without writing a class component.\n\n## useState Hook\n\n```jsx\nimport React, { useState } from \'react\';\n\nfunction Counter() {\n  const [count, setCount] = useState(0);\n\n  return (\n    <div>\n      <p>You clicked {count} times</p>\n      <button onClick={() => setCount(count + 1)}>\n        Click me\n      </button>\n    </div>\n  );\n}\n```\n\n## useEffect Hook\n\n```jsx\nimport React, { useState, useEffect } from \'react\';\n\nfunction Example() {\n  const [count, setCount] = useState(0);\n\n  useEffect(() => {\n    document.title = `You clicked ${count} times`;\n  }, [count]);\n\n  return (\n    <div>\n      <p>You clicked {count} times</p>\n      <button onClick={() => setCount(count + 1)}>\n        Click me\n      </button>\n    </div>\n  );\n}\n```\n' },
+          { name: 'typescript-tips.md', type: 'file', path: 'tech/typescript-tips.md', content: '# TypeScript Tips and Tricks\n\n## Type Assertions\n\n```typescript\nconst canvas = document.getElementById(\'canvas\') as HTMLCanvasElement;\n```\n\n## Generics\n\n```typescript\nfunction identity<T>(arg: T): T {\n  return arg;\n}\n\nconst output = identity<string>(\'myString\');\n```\n' }
+        ],
+        '/personal': [
+          { name: 'year-in-review.md', type: 'file', path: 'personal/year-in-review.md', content: '# 2024: Year in Review\n\n## Professional Achievements\n\n- Completed advanced JavaScript certification\n- Contributed to open source projects\n- Improved CI/CD pipeline at work\n\n## Personal Goals\n\n- Read 20 books\n- Learn Spanish\n- Run a half marathon\n' },
+          { name: 'book-notes.md', type: 'file', path: 'personal/book-notes.md', content: '# Book Notes\n\n## Atomic Habits by James Clear\n\n### Key Takeaways\n\n- Small habits compound over time\n- Focus on systems rather than goals\n- Make good habits easy and bad habits difficult\n- Identity-based habits are more sustainable\n' }
+        ]
+      }
+    }
+  }
+};
+
+// Demo user info
+const demoUser = {
+  login: 'demo-user',
+  name: 'Demo User',
+  email: 'demo@example.com',
+  avatar_url: '/api/placeholder/80/80'
+};
+
+// Demo mode state
+let isDemoMode = false;
+let currentDemoRepo = null;
+let currentDemoBranch = 'main';
+let currentDemoPath = '/';
+let currentDemoFile = null;
+let hasUnsavedChanges = false;
+
+// Initialize the demo mode
+function initDemoMode() {
+  isDemoMode = true;
+  
+  // Update UI for demo mode
+  document.getElementById('ide').classList.remove('hidden');
+  document.getElementById('login-screen').classList.add('hidden');
+  
+  // Set user information
+  document.getElementById('user-name').textContent = demoUser.login;
+  document.getElementById('user-name').classList.remove('hidden');
+  document.getElementById('user-avatar').src = demoUser.avatar_url;
+  document.getElementById('dropdown-user-name').textContent = demoUser.name;
+  document.getElementById('dropdown-user-email').textContent = demoUser.email;
+  
+  // Populate repository dropdown
+  populateDemoRepos();
+  
+  // Setup event listeners for demo mode
+  setupDemoEventListeners();
+}
+
+// Populate repository dropdown with demo data
+function populateDemoRepos() {
+  const repoDropdownContent = document.getElementById('repo-dropdown-content');
+  repoDropdownContent.innerHTML = '';
+  
+  demoData.repositories.forEach(repo => {
+    const repoItem = document.createElement('div');
+    repoItem.className = 'repo-item px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex justify-between items-center';
+    repoItem.dataset.repo = repo.name;
+    
+    const nameDiv = document.createElement('div');
+    nameDiv.textContent = repo.name;
+    repoItem.appendChild(nameDiv);
+    
+    repoDropdownContent.appendChild(repoItem);
+    
+    repoItem.addEventListener('click', () => selectDemoRepo(repo.name));
+  });
+}
+
+// Select a demo repository
+function selectDemoRepo(repoName) {
+  currentDemoRepo = repoName;
+  currentDemoBranch = demoData.repositories.find(r => r.name === repoName).default_branch;
+  currentDemoPath = '/';
+  currentDemoFile = null;
+  
+  // Update UI
+  document.getElementById('current-repo-name').textContent = repoName;
+  document.getElementById('repo-dropdown-content').classList.add('hidden');
+  
+  // Show branch selector
+  document.getElementById('branch-selector').classList.remove('hidden');
+  document.getElementById('current-branch').textContent = currentDemoBranch;
+  
+  // Load files for this repo and branch
+  loadDemoFiles();
+  
+  // Hide welcome view and show file UI
+  document.getElementById('welcome-view').classList.add('hidden');
+  
+  // Check if the repository has any markdown files
+  const hasMarkdownFiles = checkForMarkdownFiles();
+  if (hasMarkdownFiles) {
+    document.getElementById('empty-repo-view').classList.add('hidden');
+  } else {
+    document.getElementById('empty-repo-view').classList.remove('hidden');
+    document.getElementById('editor-container').classList.add('hidden');
+  }
+}
+
+// Check if the repository has any markdown files
+function checkForMarkdownFiles() {
+  // Recursively check all paths in the repository
+  function hasMarkdownInPath(path) {
+    const files = demoData.files[currentDemoRepo][currentDemoBranch][path] || [];
+    
+    for (const file of files) {
+      if (file.type === 'file' && file.name.endsWith('.md')) {
+        return true;
+      } else if (file.type === 'dir') {
+        const subPath = path === '/' ? `/${file.name}` : `${path}/${file.name}`;
+        if (hasMarkdownInPath(subPath)) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+  
+  return hasMarkdownInPath('/');
+}
+
+// Load files for the selected demo repository and branch
+function loadDemoFiles() {
+  const fileList = document.getElementById('file-list');
+  fileList.innerHTML = '';
+  
+  // Update breadcrumb
+  updateDemoBreadcrumb();
+  
+  // Get files for current path
+  const files = demoData.files[currentDemoRepo][currentDemoBranch][currentDemoPath] || [];
+  
+  // Sort: directories first, then files
+  const sortedFiles = [...files].sort((a, b) => {
+    if (a.type !== b.type) {
+      return a.type === 'dir' ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name);
+  });
+  
+  // Add parent directory if not at root
+  if (currentDemoPath !== '/') {
+    const parentItem = document.createElement('li');
+    parentItem.className = 'flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer';
+    
+    const parentIcon = document.createElement('div');
+    parentIcon.className = 'mr-2 text-gray-500 dark:text-gray-400';
+    parentIcon.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+      </svg>
+    `;
+    parentItem.appendChild(parentIcon);
+    
+    const parentText = document.createElement('span');
+    parentText.className = 'text-gray-700 dark:text-gray-300';
+    parentText.textContent = '..';
+    parentItem.appendChild(parentText);
+    
+    fileList.appendChild(parentItem);
+    
+    parentItem.addEventListener('click', navigateToParentDirectory);
+  }
+  
+  // Create list items for all files and directories
+  sortedFiles.forEach(file => {
+    const fileItem = document.createElement('li');
+    fileItem.className = 'flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer';
+    
+    const fileIcon = document.createElement('div');
+    fileIcon.className = 'mr-2 text-gray-500 dark:text-gray-400';
+    
+    if (file.type === 'dir') {
+      fileIcon.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+        </svg>
+      `;
+    } else {
+      if (file.name.endsWith('.md')) {
+        fileIcon.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
+          </svg>
+        `;
+      } else {
+        fileIcon.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 3a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
+          </svg>
+        `;
+      }
+    }
+    fileItem.appendChild(fileIcon);
+    
+    const fileName = document.createElement('span');
+    fileName.className = 'text-gray-700 dark:text-gray-300';
+    fileName.textContent = file.name;
+    fileItem.appendChild(fileName);
+    
+    fileList.appendChild(fileItem);
+    
+    // Add event listeners
+    if (file.type === 'dir') {
+      fileItem.addEventListener('click', () => navigateToDemoDirectory(file.name));
+    } else {
+      fileItem.addEventListener('click', () => openDemoFile(file));
+    }
+  });
+}
+
+// Update breadcrumb for current path
+function updateDemoBreadcrumb() {
+  const breadcrumb = document.getElementById('file-path-breadcrumb');
+  breadcrumb.innerHTML = '';
+  
+  const pathParts = currentDemoPath === '/' ? [] : currentDemoPath.split('/').filter(p => p);
+  
+  // Add root
+  const rootLink = document.createElement('span');
+  rootLink.className = 'cursor-pointer hover:underline text-gray-700 dark:text-gray-300';
+  rootLink.textContent = currentDemoRepo;
+  rootLink.addEventListener('click', () => {
+    currentDemoPath = '/';
+    loadDemoFiles();
+  });
+  breadcrumb.appendChild(rootLink);
+  
+  // Add path parts
+  let currentPath = '';
+  pathParts.forEach((part, index) => {
+    breadcrumb.appendChild(document.createTextNode(' / '));
+    
+    currentPath += '/' + part;
+    const partLink = document.createElement('span');
+    partLink.className = 'cursor-pointer hover:underline text-gray-700 dark:text-gray-300';
+    partLink.textContent = part;
+    
+    const pathCopy = currentPath; // Create a copy for the closure
+    partLink.addEventListener('click', () => {
+      currentDemoPath = pathCopy;
+      loadDemoFiles();
+    });
+    
+    breadcrumb.appendChild(partLink);
+  });
+}
+
+// Navigate to parent directory
+function navigateToParentDirectory() {
+  const pathParts = currentDemoPath.split('/').filter(p => p);
+  pathParts.pop();
+  currentDemoPath = pathParts.length === 0 ? '/' : '/' + pathParts.join('/');
+  loadDemoFiles();
+}
+
+// Navigate to a directory
+function navigateToDemoDirectory(dirname) {
+  currentDemoPath = currentDemoPath === '/' ? `/${dirname}` : `${currentDemoPath}/${dirname}`;
+  loadDemoFiles();
+}
+
+// Open a file
+function openDemoFile(file) {
+  if (hasUnsavedChanges) {
+    if (!confirm('You have unsaved changes. Do you want to discard them?')) {
+      return;
+    }
+  }
+  
+  currentDemoFile = file;
+  
+  // Update UI
+  document.getElementById('file-name-input').value = file.name;
+  document.getElementById('editor-container').classList.remove('hidden');
+  document.getElementById('empty-repo-view').classList.add('hidden');
+  
+  // Initialize editor if not already done
+  if (!window.editor) {
+    initializeEditor();
+  }
+  
+  // Set editor content
+  window.editor.setValue(file.content);
+  window.editor.clearSelection();
+  
+  // Reset unsaved changes flag
+  hasUnsavedChanges = false;
+  
+  // Update preview if in preview mode
+  if (document.getElementById('preview-view').classList.contains('flex')) {
+    updatePreview();
+  }
+}
+
+// Initialize the editor
+function initializeEditor() {
+  const editorElement = document.getElementById('editor-view');
+  
+  // Create editor instance
+  window.editor = ace.edit(editorElement);
+  window.editor.setTheme("ace/theme/github");
+  window.editor.session.setMode("ace/mode/markdown");
+  window.editor.setShowPrintMargin(false);
+  window.editor.setOptions({
+    fontSize: "14px",
+    fontFamily: "monospace",
+    enableBasicAutocompletion: true,
+    enableLiveAutocompletion: true,
+  });
+  
+  // Listen for changes
+  window.editor.getSession().on('change', () => {
+    hasUnsavedChanges = true;
+    if (document.getElementById('preview-view').classList.contains('flex')) {
+      updatePreview();
+    }
+  });
+  
+  // Apply dark mode if needed
+  if (document.body.classList.contains('dark-mode')) {
+    window.editor.setTheme("ace/theme/monokai");
+  }
+}
+
+// Update preview content
+function updatePreview() {
+  const content = window.editor.getValue();
+  const previewContent = document.getElementById('preview-content');
+  previewContent.innerHTML = marked.parse(content);
+}
+
+// Create a new file
+function createNewDemoFile(filename) {
+  // Validate filename
+  if (!filename.trim()) {
+    showDemoError('File name cannot be empty');
+    return false;
+  }
+  
+  if (!filename.endsWith('.md')) {
+    filename += '.md';
+  }
+  
+  // Check if file already exists
+  const files = demoData.files[currentDemoRepo][currentDemoBranch][currentDemoPath] || [];
+  if (files.some(f => f.name === filename)) {
+    showDemoError('A file with this name already exists');
+    return false;
+  }
+  
+  // Create new file object
+  const newFilePath = currentDemoPath === '/' ? filename : `${currentDemoPath.substring(1)}/${filename}`;
+  const newFile = {
+    name: filename,
+    type: 'file',
+    path: newFilePath,
+    content: `# ${filename.replace('.md', '')}\n\nEnter your markdown content here.\n`
+  };
+  
+  // Add to demo data
+  if (!demoData.files[currentDemoRepo][currentDemoBranch][currentDemoPath]) {
+    demoData.files[currentDemoRepo][currentDemoBranch][currentDemoPath] = [];
+  }
+  demoData.files[currentDemoRepo][currentDemoBranch][currentDemoPath].push(newFile);
+  
+  // Reload file list
+  loadDemoFiles();
+  
+  // Open the new file
+  openDemoFile(newFile);
+  
+  showToast('success', 'File created successfully');
+  return true;
+}
+
+// Save changes to current file
+function saveDemoChanges(commitMessage) {
+  if (!currentDemoFile) return;
+  
+  // Update file content in demo data
+  currentDemoFile.content = window.editor.getValue();
+  
+  // Reset unsaved changes flag
+  hasUnsavedChanges = false;
+  
+  showToast('success', 'Changes committed successfully');
+}
+
+// Toggle preview mode
+function toggleDemoPreview() {
+  const editorView = document.getElementById('editor-view');
+  const previewView = document.getElementById('preview-view');
+  const previewToggleBtn = document.getElementById('preview-toggle');
+  
+  if (previewView.classList.contains('hidden')) {
+    // Show preview
+    editorView.classList.add('hidden');
+    previewView.classList.remove('hidden');
+    previewView.classList.add('flex');
+    previewToggleBtn.textContent = 'Edit';
+    updatePreview();
+  } else {
+    // Hide preview
+    editorView.classList.remove('hidden');
+    previewView.classList.remove('flex');
+    previewView.classList.add('hidden');
+    previewToggleBtn.textContent = 'Preview';
+  }
+}
+
+// Show toast notification
+function showToast(type, message) {
+  const toast = document.getElementById('toast');
+  const toastMessage = document.getElementById('toast-message');
+  const successIcon = document.getElementById('toast-icon-success');
+  const errorIcon = document.getElementById('toast-icon-error');
+  const infoIcon = document.getElementById('toast-icon-info');
+  
+  // Set message
+  toastMessage.textContent = message;
+  
+  // Set icon
+  successIcon.classList.add('hidden');
+  errorIcon.classList.add('hidden');
+  infoIcon.classList.add('hidden');
+  
+  if (type === 'success') {
+    successIcon.classList.remove('hidden');
+  } else if (type === 'error') {
+    errorIcon.classList.remove('hidden');
+  } else if (type === 'info') {
+    infoIcon.classList.remove('hidden');
+  }
+  
+  // Show toast
+  toast.classList.remove('hidden', 'opacity-0', 'translate-y-2');
+  toast.classList.add('opacity-100', 'translate-y-0');
+  
+  // Hide after delay
+  setTimeout(() => {
+    toast.classList.add('opacity-0', 'translate-y-2');
+    setTimeout(() => {
+      toast.classList.add('hidden');
+    }, 300);
+  }, 3000);
+}
+
+// Show error in new file modal
+function showDemoError(message) {
+  const errorElement = document.getElementById('new-file-error');
+  errorElement.textContent = message;
+  errorElement.classList.remove('hidden');
+}
+
+// Setup event listeners for demo mode
+function setupDemoEventListeners() {
+  // Repository dropdown
+  const repoDropdownBtn = document.getElementById('repo-dropdown-btn');
+  const repoDropdownContent = document.getElementById('repo-dropdown-content');
+  
+  repoDropdownBtn.addEventListener('click', () => {
+    repoDropdownContent.classList.toggle('hidden');
+  });
+  
+  // Repository selection from welcome screen
+  document.getElementById('repo-selection-btn').addEventListener('click', () => {
+    repoDropdownContent.classList.toggle('hidden');
+  });
+  
+  // Branch dropdown
+  const branchDropdownBtn = document.getElementById('branch-dropdown-btn');
+  const branchDropdownContent = document.getElementById('branch-dropdown-content');
+  
+  branchDropdownBtn.addEventListener('click', () => {
+    // Populate branches
+    branchDropdownContent.innerHTML = '';
+    demoData.branches.forEach(branch => {
+      const branchItem = document.createElement('div');
+      branchItem.className = 'px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer';
+      branchItem.textContent = branch;
+      branchDropdownContent.appendChild(branchItem);
+      
+      branchItem.addEventListener('click', () => {
+        currentDemoBranch = branch;
+        document.getElementById('current-branch').textContent = branch;
+        branchDropdownContent.classList.add('hidden');
+        loadDemoFiles();
+      });
+    });
+    
+    branchDropdownContent.classList.toggle('hidden');
+  });
+  
+  // New file button
+  document.getElementById('new-file-btn').addEventListener('click', () => {
+    document.getElementById('new-file-name').value = '';
+    document.getElementById('new-file-error').classList.add('hidden');
+    document.getElementById('new-file-modal').classList.remove('hidden');
+  });
+  
+  // Create first file button
+  document.getElementById('create-first-file-btn').addEventListener('click', () => {
+    document.getElementById('new-file-name').value = '';
+    document.getElementById('new-file-error').classList.add('hidden');
+    document.getElementById('new-file-modal').classList.remove('hidden');
+  });
+  
+  // Create file confirmation
+  document.getElementById('create-file-confirm').addEventListener('click', () => {
+    const fileName = document.getElementById('new-file-name').value;
+    if (createNewDemoFile(fileName)) {
+      document.getElementById('new-file-modal').classList.add('hidden');
+    }
+  });
+  
+  // Create file cancel
+  document.getElementById('create-file-cancel').addEventListener('click', () => {
+    document.getElementById('new-file-modal').classList.add('hidden');
+  });
+  
+  // Save button
+  document.getElementById('save-btn').addEventListener('click', () => {
+    const commitMsg = document.getElementById('commit-message').value || `Update ${currentDemoFile.name}`;
+    saveDemoChanges(commitMsg);
+  });
+  
+  // Preview toggle
+  document.getElementById('preview-toggle').addEventListener('click', toggleDemoPreview);
+  
+  // Refresh files button
+  document.getElementById('refresh-files-btn').addEventListener('click', loadDemoFiles);
+  
+  // Theme toggle
+  document.getElementById('theme-toggle').addEventListener('click', toggleDemoTheme);
+  
+  // User menu toggle
+  const userMenuButton = document.getElementById('user-menu-button');
+  const userDropdown = document.getElementById('user-dropdown');
+  
+  userMenuButton.addEventListener('click', () => {
+    userDropdown.classList.toggle('hidden');
+  });
+ 
+  // Logout button implementation for demo mode
+document.getElementById('logout-btn').addEventListener('click', () => {
+  // Check for unsaved changes
+  if (hasUnsavedChanges) {
+    if (!confirm('You have unsaved changes. Are you sure you want to log out?')) {
+      return;
+    }
+  }
+  
+  // Reset demo state
+  isDemoMode = false;
+  currentDemoRepo = null;
+  currentDemoBranch = 'main';
+  currentDemoPath = '/';
+  currentDemoFile = null;
+  hasUnsavedChanges = false;
+  
+  // Reset editor if it exists
+  if (window.editor) {
+    window.editor.setValue('');
+    window.editor.clearSelection();
+  }
+  
+  // Show login screen
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  
+  // Hide user dropdown if open
+  document.getElementById('user-dropdown').classList.add('hidden');
+  
+  // Clear any search results or modals
+  document.getElementById('search-overlay').classList.add('hidden');
+  document.getElementById('new-file-modal').classList.add('hidden');
+  document.getElementById('new-repo-modal').classList.add('hidden');
+  document.getElementById('new-dir-modal').classList.add('hidden');
+  
+  // Reset theme to default if needed
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const htmlElement = document.documentElement;
+  
+  if ((prefersDark && !htmlElement.classList.contains('dark')) || 
+      (!prefersDark && htmlElement.classList.contains('dark'))) {
+    toggleDemoTheme();
+  }
+  
+  console.log('Logged out of demo mode');
+});
+
+// Demo mode implementation for GitHub Markdown Editor (continued)
+
+// Toggle theme for demo mode
+function toggleDemoTheme() {
+  const htmlElement = document.documentElement;
+  const isDark = htmlElement.classList.toggle('dark');
+  
+  // Update editor theme if editor is initialized
+  if (window.editor) {
+    window.editor.setTheme(isDark ? "ace/theme/monokai" : "ace/theme/github");
+  }
+  
+  // Update theme toggle button icon
+  const themeToggleIcon = document.getElementById('theme-toggle-icon');
+  if (isDark) {
+    themeToggleIcon.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd" />
+      </svg>
+    `;
+  } else {
+    themeToggleIcon.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+      </svg>
+    `;
+  }
+  
+  // Save preference to local storage
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
+// Initialize theme based on preference
+function initDemoTheme() {
+  const savedTheme = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  
+  if ((savedTheme === 'dark') || (!savedTheme && prefersDark)) {
+    document.documentElement.classList.add('dark');
+    
+    // Update theme toggle button icon
+    const themeToggleIcon = document.getElementById('theme-toggle-icon');
+    themeToggleIcon.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd" />
+      </svg>
+    `;
+  }
+}
+
+// Handle file deletion in demo mode
+function deleteDemoFile() {
+  if (!currentDemoFile) return;
+  
+  if (!confirm(`Are you sure you want to delete "${currentDemoFile.name}"?`)) {
+    return;
+  }
+  
+  // Find and remove the file from demo data
+  const files = demoData.files[currentDemoRepo][currentDemoBranch][currentDemoPath];
+  const fileIndex = files.findIndex(f => f.name === currentDemoFile.name);
+  
+  if (fileIndex !== -1) {
+    files.splice(fileIndex, 1);
+  }
+  
+  // Reset current file
+  currentDemoFile = null;
+  
+  // Hide editor
+  document.getElementById('editor-container').classList.add('hidden');
+  
+  // Check if repo is now empty
+  const hasMarkdownFiles = checkForMarkdownFiles();
+  if (!hasMarkdownFiles) {
+    document.getElementById('empty-repo-view').classList.remove('hidden');
+  }
+  
+  // Reload file list
+  loadDemoFiles();
+  
+  showToast('success', 'File deleted successfully');
+}
+
+// Create a new directory in demo mode
+function createDemoDirectory(dirName) {
+  // Validate directory name
+  if (!dirName.trim()) {
+    showDemoError('Directory name cannot be empty');
+    return false;
+  }
+  
+  // Check if directory already exists
+  const files = demoData.files[currentDemoRepo][currentDemoBranch][currentDemoPath] || [];
+  if (files.some(f => f.name === dirName)) {
+    showDemoError('A file or directory with this name already exists');
+    return false;
+  }
+  
+  // Create new directory object
+  const newDirPath = currentDemoPath === '/' ? `/${dirName}` : `${currentDemoPath}/${dirName}`;
+  const newDir = {
+    name: dirName,
+    type: 'dir',
+    path: newDirPath
+  };
+  
+  // Add to demo data
+  if (!demoData.files[currentDemoRepo][currentDemoBranch][currentDemoPath]) {
+    demoData.files[currentDemoRepo][currentDemoBranch][currentDemoPath] = [];
+  }
+  demoData.files[currentDemoRepo][currentDemoBranch][currentDemoPath].push(newDir);
+  
+  // Initialize the directory with an empty array
+  demoData.files[currentDemoRepo][currentDemoBranch][newDirPath] = [];
+  
+  // Reload file list
+  loadDemoFiles();
+  
+  showToast('success', 'Directory created successfully');
+  return true;
+}
+
+// Handle window beforeunload event to warn about unsaved changes
+function setupBeforeUnloadHandler() {
+  window.addEventListener('beforeunload', (event) => {
+    if (isDemoMode && hasUnsavedChanges) {
+      const message = 'You have unsaved changes. Are you sure you want to leave?';
+      event.returnValue = message;
+      return message;
+    }
+  });
+}
+
+// Handle keyboard shortcuts
+function setupKeyboardShortcuts() {
+  document.addEventListener('keydown', (event) => {
+    // Only handle shortcuts if in demo mode
+    if (!isDemoMode) return;
+    
+    // Ctrl/Cmd + S: Save
+    if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+      event.preventDefault();
+      if (currentDemoFile) {
+        saveDemoChanges(`Update ${currentDemoFile.name}`);
+      }
+    }
+    
+    // Ctrl/Cmd + P: Preview toggle
+    if ((event.ctrlKey || event.metaKey) && event.key === 'p') {
+      event.preventDefault();
+      toggleDemoPreview();
+    }
+  });
+}
+
+// Handle file rename
+function renameDemoFile(newName) {
+  if (!currentDemoFile) return false;
+  
+  // Validate new name
+  if (!newName.trim()) {
+    showDemoError('File name cannot be empty');
+    return false;
+  }
+  
+  if (!newName.endsWith('.md')) {
+    newName += '.md';
+  }
+  
+  // Check if file with new name already exists
+  const files = demoData.files[currentDemoRepo][currentDemoBranch][currentDemoPath] || [];
+  if (newName !== currentDemoFile.name && files.some(f => f.name === newName)) {
+    showDemoError('A file with this name already exists');
+    return false;
+  }
+  
+  // Update file name
+  const oldName = currentDemoFile.name;
+  currentDemoFile.name = newName;
+  
+  // Update path
+  const pathWithoutFilename = currentDemoFile.path.substring(0, currentDemoFile.path.lastIndexOf('/') + 1);
+  currentDemoFile.path = pathWithoutFilename + newName;
+  
+  // Update UI
+  document.getElementById('file-name-input').value = newName;
+  
+  // Reload file list
+  loadDemoFiles();
+  
+  showToast('success', `Renamed "${oldName}" to "${newName}"`);
+  return true;
+}
+
+// Handle file name edit
+function setupFileNameEditing() {
+  const fileNameInput = document.getElementById('file-name-input');
+  
+  fileNameInput.addEventListener('focus', () => {
+    // Store original value for cancel
+    fileNameInput.dataset.originalValue = fileNameInput.value;
+  });
+  
+  fileNameInput.addEventListener('blur', () => {
+    const newName = fileNameInput.value;
+    const originalValue = fileNameInput.dataset.originalValue;
+    
+    if (newName !== originalValue) {
+      if (!renameDemoFile(newName)) {
+        // If rename failed, restore original value
+        fileNameInput.value = originalValue;
+      }
+    }
+  });
+  
+  fileNameInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      fileNameInput.blur();
+    } else if (event.key === 'Escape') {
+      fileNameInput.value = fileNameInput.dataset.originalValue;
+      fileNameInput.blur();
+    }
+  });
+}
+
+// Create a new repository
+function createDemoRepository(repoName, description) {
+  // Validate repo name
+  if (!repoName.trim()) {
+    showDemoError('Repository name cannot be empty');
+    return false;
+  }
+  
+  // Check if repo already exists
+  if (demoData.repositories.some(r => r.name === repoName)) {
+    showDemoError('A repository with this name already exists');
+    return false;
+  }
+  
+  // Create new repo
+  const newRepo = {
+    name: repoName,
+    description: description || '',
+    default_branch: 'main'
+  };
+  
+  // Add to demo data
+  demoData.repositories.push(newRepo);
+  
+  // Initialize repo structure
+  demoData.files[repoName] = {
+    'main': {
+      '/': [
+        { 
+          name: 'README.md', 
+          type: 'file', 
+          path: 'README.md', 
+          content: `# ${repoName}\n\n${description || 'A new repository.'}\n` 
+        }
+      ]
+    }
+  };
+  
+  // Update repository dropdown
+  populateDemoRepos();
+  
+  // Select the new repo
+  selectDemoRepo(repoName);
+  
+  showToast('success', 'Repository created successfully');
+  return true;
+}
+
+// Setup new repository modal
+function setupNewRepositoryModal() {
+  const newRepoBtn = document.getElementById('new-repo-btn');
+  const newRepoModal = document.getElementById('new-repo-modal');
+  const createRepoConfirm = document.getElementById('create-repo-confirm');
+  const createRepoCancel = document.getElementById('create-repo-cancel');
+  const newRepoName = document.getElementById('new-repo-name');
+  const newRepoDesc = document.getElementById('new-repo-description');
+  const newRepoError = document.getElementById('new-repo-error');
+  
+  // Show modal
+  newRepoBtn.addEventListener('click', () => {
+    newRepoName.value = '';
+    newRepoDesc.value = '';
+    newRepoError.classList.add('hidden');
+    newRepoModal.classList.remove('hidden');
+    newRepoName.focus();
+  });
+  
+  // Create repository
+  createRepoConfirm.addEventListener('click', () => {
+    if (createDemoRepository(newRepoName.value, newRepoDesc.value)) {
+      newRepoModal.classList.add('hidden');
+    }
+  });
+  
+  // Cancel
+  createRepoCancel.addEventListener('click', () => {
+    newRepoModal.classList.add('hidden');
+  });
+}
+
+// Setup new directory modal
+function setupNewDirectoryModal() {
+  const newDirBtn = document.getElementById('new-dir-btn');
+  const newDirModal = document.getElementById('new-dir-modal');
+  const createDirConfirm = document.getElementById('create-dir-confirm');
+  const createDirCancel = document.getElementById('create-dir-cancel');
+  const newDirName = document.getElementById('new-dir-name');
+  const newDirError = document.getElementById('new-dir-error');
+  
+  // Show modal
+  newDirBtn.addEventListener('click', () => {
+    newDirName.value = '';
+    newDirError.classList.add('hidden');
+    newDirModal.classList.remove('hidden');
+    newDirName.focus();
+  });
+  
+  // Create directory
+  createDirConfirm.addEventListener('click', () => {
+    if (createDemoDirectory(newDirName.value)) {
+      newDirModal.classList.add('hidden');
+    }
+  });
+  
+  // Cancel
+  createDirCancel.addEventListener('click', () => {
+    newDirModal.classList.add('hidden');
+  });
+}
+
+// Setup delete file button
+function setupDeleteFileButton() {
+  const deleteFileBtn = document.getElementById('delete-file-btn');
+  
+  deleteFileBtn.addEventListener('click', deleteDemoFile);
+}
+
+// Set up commit message handling
+function setupCommitMessageHandling() {
+  const commitMsgInput = document.getElementById('commit-message');
+  
+  commitMsgInput.addEventListener('focus', () => {
+    if (currentDemoFile && !commitMsgInput.value) {
+      commitMsgInput.value = `Update ${currentDemoFile.name}`;
+    }
+  });
+}
+
+// Handle search functionality in demo mode
+function setupDemoSearch() {
+  const searchInput = document.getElementById('search-input');
+  const searchResults = document.getElementById('search-results');
+  const searchOverlay = document.getElementById('search-overlay');
+  
+  // Show search overlay
+  searchInput.addEventListener('focus', () => {
+    searchOverlay.classList.remove('hidden');
+  });
+  
+  // Hide search overlay when clicking outside
+  searchOverlay.addEventListener('click', (event) => {
+    if (event.target === searchOverlay) {
+      searchOverlay.classList.add('hidden');
+      searchInput.value = '';
+      searchResults.innerHTML = '';
+    }
+  });
+  
+  // Handle search input
+  searchInput.addEventListener('input', () => {
+    const query = searchInput.value.trim().toLowerCase();
+    searchResults.innerHTML = '';
+    
+    if (!query) return;
+    
+    // Search for markdown files in all repositories
+    const results = [];
+    
+    Object.keys(demoData.files).forEach(repo => {
+      Object.keys(demoData.files[repo]).forEach(branch => {
+        // Function to recursively search directories
+        function searchDirectory(path) {
+          const files = demoData.files[repo][branch][path] || [];
+          
+          files.forEach(file => {
+            if (file.type === 'file' && file.name.endsWith('.md')) {
+              // Match by filename or content
+              if (file.name.toLowerCase().includes(query) || 
+                  (file.content && file.content.toLowerCase().includes(query))) {
+                results.push({
+                  repo,
+                  branch,
+                  path: file.path,
+                  name: file.name,
+                  content: file.content
+                });
+              }
+            } else if (file.type === 'dir') {
+              const subPath = path === '/' ? `/${file.name}` : `${path}/${file.name}`;
+              searchDirectory(subPath);
+            }
+          });
+        }
+        
+        searchDirectory('/');
+      });
+    });
+    
+    // Display results
+    if (results.length > 0) {
+      results.slice(0, 10).forEach(result => {
+        const resultItem = document.createElement('div');
+        resultItem.className = 'p-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer';
+        
+        const resultTitle = document.createElement('div');
+        resultTitle.className = 'font-medium text-gray-800 dark:text-gray-200';
+        resultTitle.textContent = result.name;
+        resultItem.appendChild(resultTitle);
+        
+        const resultPath = document.createElement('div');
+        resultPath.className = 'text-sm text-gray-500 dark:text-gray-400';
+        resultPath.textContent = `${result.repo} / ${result.path}`;
+        resultItem.appendChild(resultPath);
+        
+        // Add content preview if matched in content
+        if (result.content && result.content.toLowerCase().includes(query)) {
+          const contentLines = result.content.split('\n');
+          let matchLine = contentLines.findIndex(line => 
+            line.toLowerCase().includes(query));
+          
+          if (matchLine !== -1) {
+            const previewText = contentLines[matchLine].trim();
+            
+            const resultPreview = document.createElement('div');
+            resultPreview.className = 'text-sm text-gray-600 dark:text-gray-300 mt-1 overflow-hidden overflow-ellipsis whitespace-nowrap';
+            resultPreview.textContent = previewText;
+            resultItem.appendChild(resultPreview);
+          }
+        }
+        
+        searchResults.appendChild(resultItem);
+        
+        // Add click handler
+        resultItem.addEventListener('click', () => {
+          // Switch to the repo and branch
+          if (currentDemoRepo !== result.repo) {
+            currentDemoRepo = result.repo;
+            document.getElementById('current-repo-name').textContent = result.repo;
+          }
+          
+          if (currentDemoBranch !== result.branch) {
+            currentDemoBranch = result.branch;
+            document.getElementById('current-branch').textContent = result.branch;
+          }
+          
+          // Get directory path
+          const dirPath = result.path.substring(0, result.path.lastIndexOf('/'));
+          currentDemoPath = dirPath ? `/${dirPath}` : '/';
+          
+          // Load files
+          loadDemoFiles();
+          
+          // Find and open the file
+          const files = demoData.files[result.repo][result.branch][currentDemoPath] || [];
+          const fileToOpen = files.find(f => f.name === result.name);
+          if (fileToOpen) {
+            openDemoFile(fileToOpen);
+          }
+          
+          // Hide search overlay
+          searchOverlay.classList.add('hidden');
+          searchInput.value = '';
+          searchResults.innerHTML = '';
+        });
+      });
+    } else {
+      const noResults = document.createElement('div');
+      noResults.className = 'p-2 text-gray-500 dark:text-gray-400';
+      noResults.textContent = 'No results found';
+      searchResults.appendChild(noResults);
+    }
+  });
+}
+
+// Setup export functionality in demo mode
+function setupDemoExport() {
+  const exportBtn = document.getElementById('export-btn');
+  
+  exportBtn.addEventListener('click', () => {
+    if (!currentDemoFile) return;
+    
+    const content = window.editor.getValue();
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = currentDemoFile.name;
+    a.click();
+    
+    URL.revokeObjectURL(url);
+    
+    showToast('success', `Exported ${currentDemoFile.name}`);
+  });
+}
+
+// Full initialization function for demo mode
+function initFullDemoMode() {
+  initDemoMode();
+  initDemoTheme();
+  setupFileNameEditing();
+  setupBeforeUnloadHandler();
+  setupKeyboardShortcuts();
+  setupNewRepositoryModal();
+  setupNewDirectoryModal();
+  setupDeleteFileButton();
+  setupCommitMessageHandling();
+  setupDemoSearch();
+  setupDemoExport();
+}
+
+// Global initialization - detect if we should use demo mode
+document.addEventListener('DOMContentLoaded', () => {
+  const useDemoMode = (new URLSearchParams(window.location.search)).has('demo');
+  
+  if (useDemoMode) {
+    initFullDemoMode();
+  }
+  
+  // Demo mode button in login screen
+  document.getElementById('demo-mode-btn').addEventListener('click', () => {
+    initFullDemoMode();
+  });
+});
+  
+
+}
+
+
+
+
 </script></body></html>
