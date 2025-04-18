@@ -254,7 +254,8 @@
             currentFile: null,
             currentRepo: null,
             currentBranch: 'main',
-            isFileModified: false
+            isFileModified: false,
+            currentPath: null
         };
       
       // DOM Elements
@@ -570,8 +571,7 @@
                     await this.createFile(fullPath, '');
                     
                     // Reload current directory contents
-                    const contents = await github.getContents(currentPath, state.currentBranch);
-                    await fileTreeManager.displayContents(contents);
+                    await loadRepositoryContents(currentPath);
                     
                     showToast('success', `Created ${fileName}`);
                 } catch (error) {
@@ -592,8 +592,7 @@
                     await this.createFile(fullPath, '');
                     
                     // Reload current directory contents
-                    const contents = await github.getContents(currentPath, state.currentBranch);
-                    await fileTreeManager.displayContents(contents);
+                    await loadRepositoryContents(currentPath);
                     
                     showToast('success', `Created folder ${folderName}`);
                 } catch (error) {
@@ -761,10 +760,14 @@
         // Load repository contents
         async function loadRepositoryContents(path = '') {
             try {
+                loading.show('Loading contents...');
+                state.currentPath = path;
                 const contents = await github.getContents(path, state.currentBranch);
-                displayContents(contents, path);
+                await fileTreeManager.displayContents(contents);
             } catch (error) {
-                throw new Error('Failed to load repository contents');
+                errorHandler.handle(error, 'loadRepositoryContents');
+            } finally {
+                loading.hide();
             }
         }
 
@@ -1056,14 +1059,9 @@
                     if (item.type === 'dir') {
                         div.addEventListener('click', async () => {
                             try {
-                                loading.show('Loading directory...');
-                                const dirContents = await github.getContents(item.path, state.currentBranch);
-                                await this.displayContents(dirContents);
-                                showToast('success', `Loaded ${item.name}`);
+                                await loadRepositoryContents(item.path);
                             } catch (error) {
                                 errorHandler.handle(error, 'loadDirectory');
-                            } finally {
-                                loading.hide();
                             }
                         });
                     } else {
@@ -1072,6 +1070,18 @@
                     
                     fileTree.appendChild(div);
                 });
+
+                // Add "Back" button if we're in a subdirectory
+                if (state.currentPath) {
+                    const backDiv = document.createElement('div');
+                    backDiv.className = 'file-tree-item';
+                    backDiv.innerHTML = '📂 ..';
+                    backDiv.addEventListener('click', async () => {
+                        const parentPath = state.currentPath.split('/').slice(0, -1).join('/');
+                        await loadRepositoryContents(parentPath);
+                    });
+                    fileTree.insertBefore(backDiv, fileTree.firstChild);
+                }
             }
         };
 
