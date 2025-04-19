@@ -2296,7 +2296,7 @@
         // Update file tree context menu
         function setupFileTreeContextMenu() {
             const contextMenu = document.createElement('div');
-            contextMenu.className = 'hidden fixed bg-[#2d2d2d] rounded shadow-lg py-1 min-w-[200px]';
+            contextMenu.className = 'hidden fixed bg-[#2d2d2d] rounded shadow-lg py-1 min-w-[200px] z-50';
             contextMenu.innerHTML = `
                 <div class="px-4 py-2 hover:bg-[#3c3c3c] cursor-pointer" data-action="new-file">New File</div>
                 <div class="px-4 py-2 hover:bg-[#3c3c3c] cursor-pointer" data-action="new-folder">New Folder</div>
@@ -2305,50 +2305,98 @@
                 <div class="px-4 py-2 hover:bg-[#3c3c3c] cursor-pointer" data-action="delete">Delete</div>
             `;
             document.body.appendChild(contextMenu);
-
+            
+            // Function to hide context menu
+            const hideContextMenu = () => {
+                contextMenu.classList.add('hidden');
+            };
+            
             elements.fileTree.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 const target = e.target.closest('.file-tree-item');
                 if (target) {
                     const rect = target.getBoundingClientRect();
-                    contextMenu.style.top = `${e.clientY}px`;
-                    contextMenu.style.left = `${e.clientX}px`;
+                    const menuRect = contextMenu.getBoundingClientRect();
+                    
+                    // Calculate available space
+                    const viewportHeight = window.innerHeight;
+                    const spaceBelow = viewportHeight - e.clientY;
+                    const spaceAbove = e.clientY;
+                    
+                    // Position horizontally
+                    let left = e.clientX;
+                    if (left + menuRect.width > window.innerWidth) {
+                        left = window.innerWidth - menuRect.width - 10;
+                    }
+                    
+                    // Position vertically
+                    let top = e.clientY;
+                    if (spaceBelow < menuRect.height && spaceAbove > menuRect.height) {
+                        // If not enough space below but enough space above, show above
+                        top = e.clientY - menuRect.height;
+                    } else if (spaceBelow < menuRect.height) {
+                        // If not enough space below and not enough above, align to bottom of viewport
+                        top = viewportHeight - menuRect.height - 10;
+                    }
+                    
+                    // Ensure menu stays within viewport bounds
+                    top = Math.max(10, Math.min(top, viewportHeight - menuRect.height - 10));
+                    left = Math.max(10, Math.min(left, window.innerWidth - menuRect.width - 10));
+                    
+                    contextMenu.style.top = `${top}px`;
+                    contextMenu.style.left = `${left}px`;
                     contextMenu.classList.remove('hidden');
                     contextMenu.dataset.path = target.dataset.path;
                 }
             });
-
-            document.addEventListener('click', () => {
-                contextMenu.classList.add('hidden');
+            
+            // Hide context menu when clicking anywhere in the document
+            document.addEventListener('click', (e) => {
+                // Only hide if clicking outside the context menu and not on a file tree item
+                if (!contextMenu.contains(e.target) && !e.target.closest('.file-tree-item')) {
+                    hideContextMenu();
+                }
             });
-
+            
+            // Hide context menu when pressing Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    hideContextMenu();
+                }
+            });
+            
+            // Handle context menu item clicks
             contextMenu.addEventListener('click', async (e) => {
                 const action = e.target.dataset.action;
                 const path = contextMenu.dataset.path;
-
-                switch (action) {
-                    case 'new-file':
-                        await fileOperations.createNewFile();
-                        break;
-                    case 'new-folder':
-                        await fileOperations.createNewFolder();
-                        break;
-                    case 'rename':
-                        if (path) {
-                            const newName = prompt('Enter new name:', path.split('/').pop());
-                            if (newName) {
-                                const newPath = path.replace(/[^/]+$/, newName);
-                                await fileOperations.renameFile(path, newPath);
+                
+                if (action) {
+                    hideContextMenu();
+                    
+                    switch (action) {
+                        case 'new-file':
+                            await fileOperations.createNewFile();
+                            break;
+                        case 'new-folder':
+                            await fileOperations.createNewFolder();
+                            break;
+                        case 'rename':
+                            if (path) {
+                                const newName = prompt('Enter new name:', path.split('/').pop());
+                                if (newName) {
+                                    const newPath = path.replace(/[^/]+$/, newName);
+                                    await fileOperations.renameFile(path, newPath);
+                                }
                             }
-                        }
-                        break;
-                    case 'delete':
-                        if (path) {
-                            if (confirm('Are you sure you want to delete this file?')) {
-                                await fileOperations.deleteFile(path);
+                            break;
+                        case 'delete':
+                            if (path) {
+                                if (confirm('Are you sure you want to delete this file?')) {
+                                    await fileOperations.deleteFile(path);
+                                }
                             }
-                        }
-                        break;
+                            break;
+                    }
                 }
             });
         }
