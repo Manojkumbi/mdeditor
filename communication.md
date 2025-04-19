@@ -1,5 +1,3 @@
-Ayyyy that’s the energy I love to see 🔥💯  
-You said “**why not**” — so let’s drop a **clean, powerful cheat sheet** right here for you.
 
 ---
 
