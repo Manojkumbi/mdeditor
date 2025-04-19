@@ -367,7 +367,7 @@
         <!-- Main Content -->
         <div class="flex-1 flex">
             <!-- Sidebar -->
-          
+
 
             <div id="sidebar" class="w-64 h-screen bg-[#252526] flex flex-col">
                 <!-- File Explorer Header -->
@@ -382,7 +382,25 @@
 
                 <!-- Scrollable File Tree -->
                 <div id="file-tree" class="flex-1 overflow-y-auto p-2">
-                    <!-- many file items here -->
+
+
+
+
+
+
+
+                    <div class="file-tree-item" onclick="loadFileTree()"><span
+                            class="file-icon">📝</span><span>communication.md</span>
+                    </div>
+
+
+
+
+
+
+
+
+
                 </div>
             </div>
 
@@ -440,6 +458,8 @@
             window.state.editor = window.monacoEditor;
         }
 
+
+
         // DOM Elements
         const elements = {
             loginScreen: document.getElementById('login-screen'),
@@ -463,6 +483,247 @@
             previewBtn: document.getElementById('preview-btn'),
             repoSelector: document.getElementById('repo-selector')
         };
+
+
+
+        function loadFileTree() {
+            let fileContent = "";
+            fetch("https://gist.githubusercontent.com/Manojkumbi/ba420825fae4044e274ca7b0c565aca3/raw/a06fe7b0d5a3f57552cfb78688ae77a6ea1717d5/README.md")
+                .then(res => res.text())
+                .then(data => {
+                    fileContent = data;
+
+                    state.editor.setValue(fileContent);
+                  autoRenderManage.init();
+                  autoRenderManage.renderContent();
+                  
+                });
+                const autoRenderManage = {
+                        init() {
+                            // Create render container
+                           
+                            
+                            const container = document.createElement('div');
+                            container.id = 'auto-render-container';
+                            container.className = 'hidden fixed inset-0 bg-white dark:bg-[#1e1e1e] z-50';
+                    container.style.padding = '0';
+
+                    // Add edit button - match save button style
+                    const editButton = document.createElement('button');
+                    editButton.id = 'render-edit-button';
+                    editButton.className = 'fixed top-4 right-4 px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded z-[60]';
+                    editButton.textContent = 'Edit';
+                    editButton.onclick = () => this.showEditor();
+
+                    // Add content container
+                    const content = document.createElement('div');
+                    content.id = 'render-content';
+                    content.className = 'h-full';
+
+                    container.appendChild(editButton);
+                    container.appendChild(content);
+                    document.body.appendChild(container);
+
+                    // Add styles
+                    const style = document.createElement('style');
+                    style.textContent = `
+                    #auto-render-container {
+                        transition: opacity 0.3s ease;
+                        overflow: hidden;
+                    }
+                    #auto-render-container.markdown-mode {
+                        padding: 20px;
+                        overflow: auto;
+                    }
+                    #render-content {
+                        height: 100%;
+                    }
+                    #render-content.markdown-view {
+                        max-width: 800px;
+                        margin: 0 auto;
+                        padding-top: 16px;
+                    }
+                    .prose-invert {
+                        color: #e5e7eb;
+                        font-size: 16px;
+                        line-height: 1.6;
+                    }
+                    .prose-invert h1 {
+                        font-size: 2em;
+                        margin-top: 0.67em;
+                        margin-bottom: 0.67em;
+                    }
+                    .prose-invert h2 {
+                        font-size: 1.5em;
+                        margin-top: 0.83em;
+                        margin-bottom: 0.83em;
+                    }
+                    .prose-invert h3 {
+                        font-size: 1.17em;
+                        margin-top: 1em;
+                        margin-bottom: 1em;
+                    }
+                    .prose-invert p {
+                        margin-top: 1em;
+                        margin-bottom: 1em;
+                    }
+                    .prose-invert a {
+                        color: #60a5fa;
+                        text-decoration: underline;
+                    }
+                    .prose-invert code {
+                        background: #2d2d2d;
+                        padding: 0.2em 0.4em;
+                        border-radius: 0.375rem;
+                        font-family: monospace;
+                    }
+                    .prose-invert pre {
+                        background: #2d2d2d;
+                        padding: 1em;
+                        border-radius: 0.375rem;
+                        overflow-x: auto;
+                    }
+                    .prose-invert ul, .prose-invert ol {
+                        padding-left: 2em;
+                        margin: 1em 0;
+                    }
+                    .prose-invert li {
+                        margin: 0.5em 0;
+                    }
+                    .prose-invert blockquote {
+                        border-left: 4px solid #4b5563;
+                        margin: 1em 0;
+                        padding-left: 1em;
+                        color: #9ca3af;
+                    }
+                `;
+                    document.head.appendChild(style);
+
+                    // Load marked library if not already loaded
+                    if (typeof marked === 'undefined') {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+                        script.onload = () => {
+                            console.log('Marked library loaded successfully');
+                            // Initialize marked with default options
+                            marked.setOptions({
+                                breaks: true,
+                                gfm: true,
+                                headerIds: true,
+                                sanitize: false
+                            });
+                        };
+                        document.head.appendChild(script);
+                    }
+
+                    // Load highlight.js if not already loaded
+                    if (typeof hljs === 'undefined') {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/lib/highlight.min.js';
+                        const style = document.createElement('link');
+                        style.rel = 'stylesheet';
+                        style.href = 'https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github-dark.css';
+                        document.head.appendChild(script);
+                        document.head.appendChild(style);
+                    }
+                },
+
+                showEditor() {
+                    const container = document.getElementById('auto-render-container');
+                    const editor = document.getElementById('editor');
+                    if (container && editor) {
+                        container.classList.add('hidden');
+                        editor.classList.remove('hidden');
+                    }
+                },
+
+                renderContent() {
+                    const container = document.getElementById('auto-render-container');
+                    const content = document.getElementById('render-content');
+                    const editor = document.getElementById('editor');
+
+                    if (!container || !content || !editor || !state.currentFile) return;
+
+                    const fileExt = file.name.split('.').pop().toLowerCase();
+                    const fileContent = state.editor.getValue();
+
+                    const waitForMarked = (callback) => {
+                        if (window.markedReady && typeof marked !== 'undefined') {
+                            callback();
+                        } else {
+                            setTimeout(() => waitForMarked(callback), 100);
+                        }
+                    };
+
+                    if (fileExt === 'html') {
+                        // Reset container for HTML view
+                        container.classList.remove('markdown-mode');
+                        content.className = 'h-full';
+
+                        // Create sandbox iframe for HTML
+                        const iframe = document.createElement('iframe');
+                        iframe.style.cssText = `
+                        width: 100%;
+                        height: 100%;
+                        border: none;
+                        display: block;
+                        background-color: white;
+                    `;
+
+                        content.innerHTML = '';
+                        content.appendChild(iframe);
+
+                        // Write content to iframe
+                        iframe.contentDocument.open();
+                        iframe.contentDocument.write(fileContent);
+                        iframe.contentDocument.close();
+
+                        // Show render container
+                        editor.classList.add('hidden');
+                        container.classList.remove('hidden');
+                    } else if (fileExt === 'md') {
+                        // Set markdown mode
+                        container.classList.add('markdown-mode');
+                        content.className = 'prose prose-invert max-w-none markdown-view';
+
+                        waitForMarked(() => {
+                            try {
+                                // Initialize marked with options
+                                marked.setOptions({
+                                    breaks: true,
+                                    gfm: true,
+                                    headerIds: true,
+                                    sanitize: false
+                                });
+
+                                // Render markdown
+                                const htmlContent = marked.parse(fileContent);
+                                content.innerHTML = htmlContent;
+
+                                // Highlight code blocks
+                                if (typeof hljs !== 'undefined') {
+                                    document.querySelectorAll('pre code').forEach((block) => {
+                                        hljs.highlightElement(block);
+                                    });
+                                }
+
+                                // Show render container
+                                editor.classList.add('hidden');
+                                container.classList.remove('hidden');
+                            } catch (error) {
+                                console.error('Error rendering markdown:', error);
+                                showToast('error', 'Failed to render markdown file');
+                            }
+                        });
+                    }
+                }
+            };
+
+
+
+
+
+        }
 
         // Configuration
         const config = {
@@ -2305,30 +2566,30 @@
                 <div class="px-4 py-2 hover:bg-[#3c3c3c] cursor-pointer" data-action="delete">Delete</div>
             `;
             document.body.appendChild(contextMenu);
-            
+
             // Function to hide context menu
             const hideContextMenu = () => {
                 contextMenu.classList.add('hidden');
             };
-            
+
             elements.fileTree.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 const target = e.target.closest('.file-tree-item');
                 if (target) {
                     const rect = target.getBoundingClientRect();
                     const menuRect = contextMenu.getBoundingClientRect();
-                    
+
                     // Calculate available space
                     const viewportHeight = window.innerHeight;
                     const spaceBelow = viewportHeight - e.clientY;
                     const spaceAbove = e.clientY;
-                    
+
                     // Position horizontally
                     let left = e.clientX;
                     if (left + menuRect.width > window.innerWidth) {
                         left = window.innerWidth - menuRect.width - 10;
                     }
-                    
+
                     // Position vertically
                     let top = e.clientY;
                     if (spaceBelow < menuRect.height && spaceAbove > menuRect.height) {
@@ -2338,18 +2599,18 @@
                         // If not enough space below and not enough above, align to bottom of viewport
                         top = viewportHeight - menuRect.height - 10;
                     }
-                    
+
                     // Ensure menu stays within viewport bounds
                     top = Math.max(10, Math.min(top, viewportHeight - menuRect.height - 10));
                     left = Math.max(10, Math.min(left, window.innerWidth - menuRect.width - 10));
-                    
+
                     contextMenu.style.top = `${top}px`;
                     contextMenu.style.left = `${left}px`;
                     contextMenu.classList.remove('hidden');
                     contextMenu.dataset.path = target.dataset.path;
                 }
             });
-            
+
             // Hide context menu when clicking anywhere in the document
             document.addEventListener('click', (e) => {
                 // Only hide if clicking outside the context menu and not on a file tree item
@@ -2357,22 +2618,22 @@
                     hideContextMenu();
                 }
             });
-            
+
             // Hide context menu when pressing Escape key
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     hideContextMenu();
                 }
             });
-            
+
             // Handle context menu item clicks
             contextMenu.addEventListener('click', async (e) => {
                 const action = e.target.dataset.action;
                 const path = contextMenu.dataset.path;
-                
+
                 if (action) {
                     hideContextMenu();
-                    
+
                     switch (action) {
                         case 'new-file':
                             await fileOperations.createNewFile();
@@ -2434,79 +2695,6 @@
         }
 
         // Preview functionality
-        function togglePreview() {
-            if (elements.preview.classList.contains('hidden')) {
-                const content = state.editor.getValue();
-                const previewContent = marked.parse(content);
-                const previewHtml = `
-                    <!DOCTYPE html>
-                    <html>
-                        <head>
-                            <meta charset="UTF-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                            <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"><\/script>
-                            <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/lib/highlight.min.js"><\/script>
-                            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github-dark.css">
-                            <style>
-                                body {
-                                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-                                    line-height: 1.6;
-                                    padding: 2rem;
-                                    max-width: 800px;
-                                    margin: 0 auto;
-                                    color: #e5e7eb;
-                                    background-color: #1e1e1e;
-                                }
-                                pre {
-                                    background-color: #2d2d2d;
-                                    padding: 1rem;
-                                    border-radius: 0.375rem;
-                                    overflow-x: auto;
-                                }
-                                code {
-                                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-                                }
-                                img {
-                                    max-width: 100%;
-                                    height: auto;
-                                }
-                                table {
-                                    border-collapse: collapse;
-                                    width: 100%;
-                                    margin: 1rem 0;
-                                }
-                                th, td {
-                                    border: 1px solid #374151;
-                                    padding: 0.5rem;
-                                    text-align: left;
-                                }
-                                th {
-                                    background-color: #2d2d2d;
-                                }
-                                blockquote {
-                                    border-left: 4px solid #4b5563;
-                                    margin: 1rem 0;
-                                    padding-left: 1rem;
-                                    color: #9ca3af;
-                                }
-                            </style>
-                        </head>
-                        <body>
-                            ${previewContent}
-                            <script>hljs.highlightAll();<\/script>
-                        </body>
-                    </html>
-                `;
-                elements.previewFrame.srcdoc = previewHtml;
-                elements.preview.classList.remove('hidden');
-                elements.editor.classList.add('hidden');
-                elements.previewBtn.textContent = 'Edit';
-            } else {
-                elements.preview.classList.add('hidden');
-                elements.editor.classList.remove('hidden');
-                elements.previewBtn.textContent = 'Preview';
-            }
-        }
 
         // Update file tree modified state
         function updateFileTreeModifiedState(path, modified) {
