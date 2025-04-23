@@ -294,7 +294,7 @@
                         d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22">
                     </path>
                 </svg>
-                <h2 class="mt-4 text-2xl font-bold text-gray-900 dark:text-white">GitHub Markdown Editor</h2>
+                <h2 class="mt-4 text-2xl font-bold text-gray-900 dark:text-white">Markode</h2>
                 <p class="mt-2 text-gray-600 dark:text-gray-400">Enter your GitHub Personal Access Token to start
                     editing</p>
             </div>
@@ -384,22 +384,9 @@
                 <div id="file-tree" class="flex-1 overflow-y-auto p-2">
 
 
-
-
-
-
-
                     <div class="file-tree-item" onclick="loadFileTree()"><span
-                            class="file-icon">📝</span><span>communication.md</span>
+                            class="file-icon">📝</span><span>README.md</span>
                     </div>
-
-
-
-
-
-
-
-
 
                 </div>
             </div>
@@ -429,7 +416,7 @@
         <!-- Repository list will be populated here -->
     </div>
 
-    <span id="current-repo-name" class="text-sm opacity-75">No repository selected</span>
+    <!-- <span id="current-repo-name" class="text-sm opacity-75">No repository selected</span> -->
 
     <div id="dropdown-user-name" class="text-sm font-medium"></div>
     <div id="dropdown-user-email" class="text-xs text-gray-500"></div>
@@ -484,246 +471,339 @@
             repoSelector: document.getElementById('repo-selector')
         };
 
-
-
         function loadFileTree() {
             let fileContent = "";
-            fetch("https://gist.githubusercontent.com/Manojkumbi/ba420825fae4044e274ca7b0c565aca3/raw/a06fe7b0d5a3f57552cfb78688ae77a6ea1717d5/README.md")
+            fetch("https://gist.githubusercontent.com/Manojkumbi/ba420825fae4044e274ca7b0c565aca3/raw/a6e6d5d06d7aadb2f7d55adfb63f200c504b36d7/README.md")
                 .then(res => res.text())
                 .then(data => {
                     fileContent = data;
 
+                    // Set the editor value
                     state.editor.setValue(fileContent);
-                  autoRenderManage.init();
-                  autoRenderManage.renderContent();
-                  
+
+                    // Create a temporary currentFile object if it doesn't exist
+                    if (!state.currentFile) {
+                        state.currentFile = {
+                            name: "README.md",
+                            content: fileContent
+                        };
+                    }
+
+                    // Initialize and render
+                    autoRenderManage.init();
+                    autoRenderManage.renderContent();
+                })
+                .catch(error => {
+                    console.error("Error loading file:", error);
+                    if (typeof showToast === 'function') {
+                        showToast('error', 'Failed to load file');
+                    }
                 });
-                const autoRenderManage = {
-                        init() {
-                            // Create render container
-                           
-                            
-                            const container = document.createElement('div');
-                            container.id = 'auto-render-container';
-                            container.className = 'hidden fixed inset-0 bg-white dark:bg-[#1e1e1e] z-50';
-                    container.style.padding = '0';
+        }
 
-                    // Add edit button - match save button style
-                    const editButton = document.createElement('button');
-                    editButton.id = 'render-edit-button';
-                    editButton.className = 'fixed top-4 right-4 px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded z-[60]';
-                    editButton.textContent = 'Edit';
-                    editButton.onclick = () => this.showEditor();
+        const autoRenderManage = {
+            init() {
+                // Check if already initialized to prevent duplicate elements
+                if (document.getElementById('auto-render-container')) {
+                    return;
+                }
 
-                    // Add content container
-                    const content = document.createElement('div');
-                    content.id = 'render-content';
-                    content.className = 'h-full';
+                // Create render container
+                const container = document.createElement('div');
+                container.id = 'auto-render-container';
+                container.className = 'hidden fixed inset-0 bg-white dark:bg-[#1e1e1e] z-50';
+                container.style.padding = '0';
 
-                    container.appendChild(editButton);
-                    container.appendChild(content);
-                    document.body.appendChild(container);
+                // Add edit button - match save button style
+                const editButton = document.createElement('button');
+                editButton.id = 'render-edit-button';
+                editButton.className = 'fixed top-4 right-4 px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded z-[60]';
+                editButton.textContent = 'Edit';
+                editButton.onclick = () => this.showEditor();
 
-                    // Add styles
+                // Add content container
+                const content = document.createElement('div');
+                content.id = 'render-content';
+                content.className = 'h-full';
+
+                container.appendChild(editButton);
+                container.appendChild(content);
+                document.body.appendChild(container);
+
+                // Add styles
+                this.addStyles();
+
+                // Load required libraries
+                this.loadLibraries();
+            },
+
+            addStyles() {
+                // Only add styles if they don't exist
+                if (!document.getElementById('auto-render-styles')) {
                     const style = document.createElement('style');
+                    style.id = 'auto-render-styles';
                     style.textContent = `
-                    #auto-render-container {
-                        transition: opacity 0.3s ease;
-                        overflow: hidden;
-                    }
-                    #auto-render-container.markdown-mode {
-                        padding: 20px;
-                        overflow: auto;
-                    }
-                    #render-content {
-                        height: 100%;
-                    }
-                    #render-content.markdown-view {
-                        max-width: 800px;
-                        margin: 0 auto;
-                        padding-top: 16px;
-                    }
-                    .prose-invert {
-                        color: #e5e7eb;
-                        font-size: 16px;
-                        line-height: 1.6;
-                    }
-                    .prose-invert h1 {
-                        font-size: 2em;
-                        margin-top: 0.67em;
-                        margin-bottom: 0.67em;
-                    }
-                    .prose-invert h2 {
-                        font-size: 1.5em;
-                        margin-top: 0.83em;
-                        margin-bottom: 0.83em;
-                    }
-                    .prose-invert h3 {
-                        font-size: 1.17em;
-                        margin-top: 1em;
-                        margin-bottom: 1em;
-                    }
-                    .prose-invert p {
-                        margin-top: 1em;
-                        margin-bottom: 1em;
-                    }
-                    .prose-invert a {
-                        color: #60a5fa;
-                        text-decoration: underline;
-                    }
-                    .prose-invert code {
-                        background: #2d2d2d;
-                        padding: 0.2em 0.4em;
-                        border-radius: 0.375rem;
-                        font-family: monospace;
-                    }
-                    .prose-invert pre {
-                        background: #2d2d2d;
-                        padding: 1em;
-                        border-radius: 0.375rem;
-                        overflow-x: auto;
-                    }
-                    .prose-invert ul, .prose-invert ol {
-                        padding-left: 2em;
-                        margin: 1em 0;
-                    }
-                    .prose-invert li {
-                        margin: 0.5em 0;
-                    }
-                    .prose-invert blockquote {
-                        border-left: 4px solid #4b5563;
-                        margin: 1em 0;
-                        padding-left: 1em;
-                        color: #9ca3af;
-                    }
-                `;
+                #auto-render-container {
+                    transition: opacity 0.3s ease;
+                    overflow: hidden;
+                }
+                #auto-render-container.markdown-mode {
+                    padding: 20px;
+                    overflow: auto;
+                }
+                #render-content {
+                    height: 100%;
+                }
+                #render-content.markdown-view {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding-top: 16px;
+                }
+                .prose-invert {
+                    color: #e5e7eb;
+                    font-size: 16px;
+                    line-height: 1.6;
+                }
+                .prose-invert h1 {
+                    font-size: 2em;
+                    margin-top: 0.67em;
+                    margin-bottom: 0.67em;
+                }
+                .prose-invert h2 {
+                    font-size: 1.5em;
+                    margin-top: 0.83em;
+                    margin-bottom: 0.83em;
+                }
+                .prose-invert h3 {
+                    font-size: 1.17em;
+                    margin-top: 1em;
+                    margin-bottom: 1em;
+                }
+                .prose-invert p {
+                    margin-top: 1em;
+                    margin-bottom: 1em;
+                }
+                .prose-invert a {
+                    color: #60a5fa;
+                    text-decoration: underline;
+                }
+                .prose-invert code {
+                    background: #2d2d2d;
+                    padding: 0.2em 0.4em;
+                    border-radius: 0.375rem;
+                    font-family: monospace;
+                }
+                .prose-invert pre {
+                    background: #2d2d2d;
+                    padding: 1em;
+                    border-radius: 0.375rem;
+                    overflow-x: auto;
+                }
+                .prose-invert ul, .prose-invert ol {
+                    padding-left: 2em;
+                    margin: 1em 0;
+                }
+                .prose-invert li {
+                    margin: 0.5em 0;
+                }
+                .prose-invert blockquote {
+                    border-left: 4px solid #4b5563;
+                    margin: 1em 0;
+                    padding-left: 1em;
+                    color: #9ca3af;
+                }
+            `;
                     document.head.appendChild(style);
+                }
+            },
 
-                    // Load marked library if not already loaded
-                    if (typeof marked === 'undefined') {
-                        const script = document.createElement('script');
-                        script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
-                        script.onload = () => {
-                            console.log('Marked library loaded successfully');
-                            // Initialize marked with default options
+            loadLibraries() {
+                // Load marked library if not already loaded
+                if (typeof marked === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+                    script.onload = () => {
+                        console.log('Marked library loaded successfully');
+                        // Initialize marked with default options
+                        marked.setOptions({
+                            breaks: true,
+                            gfm: true,
+                            headerIds: true,
+                            sanitize: false
+                        });
+                        // Set flag to indicate marked is ready
+                        window.markedReady = true;
+                    };
+                    document.head.appendChild(script);
+                } else {
+                    window.markedReady = true;
+                }
+
+                // Load highlight.js if not already loaded
+                if (typeof hljs === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/lib/highlight.min.js';
+                    const style = document.createElement('link');
+                    style.rel = 'stylesheet';
+                    style.href = 'https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github-dark.css';
+                    document.head.appendChild(script);
+                    document.head.appendChild(style);
+                }
+            },
+
+            showEditor() {
+                const container = document.getElementById('auto-render-container');
+                const editor = document.getElementById('editor');
+                if (container && editor) {
+                    container.classList.add('hidden');
+                    editor.classList.remove('hidden');
+                }
+            },
+
+            renderContent() {
+                const container = document.getElementById('auto-render-container');
+                const content = document.getElementById('render-content');
+                const editor = document.getElementById('editor');
+
+                if (!container || !content || !editor) {
+                    console.error('Required elements not found');
+                    return;
+                }
+
+                // Modified to handle missing state.currentFile
+                let fileExt = 'md'; // Default to markdown
+                let fileContent = '';
+
+                // Try to get file extension from state.currentFile
+                if (state && state.currentFile && state.currentFile.name) {
+                    fileExt = state.currentFile.name.split('.').pop().toLowerCase();
+                } else {
+                    console.log('No current file name available, defaulting to markdown rendering');
+                }
+
+                // Get content from editor if available
+                if (state && state.editor && typeof state.editor.getValue === 'function') {
+                    fileContent = state.editor.getValue();
+                } else {
+                    console.error('Cannot get editor content');
+                    return;
+                }
+
+                // Only proceed if we have content
+                if (!fileContent) {
+                    console.error('No content to render');
+                    return;
+                }
+
+                if (fileExt === 'html') {
+                    this.renderHTML(container, content, editor, fileContent);
+                } else if (fileExt === 'md') {
+                    this.renderMarkdown(container, content, editor, fileContent);
+                } else {
+                    console.log(`File type ${fileExt} not supported for rendering, defaulting to markdown`);
+                    this.renderMarkdown(container, content, editor, fileContent);
+                }
+            },
+
+            renderHTML(container, content, editor, fileContent) {
+                // Reset container for HTML view
+                container.classList.remove('markdown-mode');
+                content.className = 'h-full';
+
+                // Create sandbox iframe for HTML
+                const iframe = document.createElement('iframe');
+                iframe.style.cssText = `
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+            background-color: white;
+        `;
+
+                content.innerHTML = '';
+                content.appendChild(iframe);
+
+                // Write content to iframe with safety measures
+                try {
+                    iframe.contentDocument.open();
+                    iframe.contentDocument.write(fileContent);
+                    iframe.contentDocument.close();
+                } catch (error) {
+                    console.error('Error rendering HTML:', error);
+                    content.innerHTML = '<div class="p-4 text-red-500">Error rendering HTML content</div>';
+                }
+
+                // Show render container
+                editor.classList.add('hidden');
+                container.classList.remove('hidden');
+            },
+
+            renderMarkdown(container, content, editor, fileContent) {
+                // Set markdown mode
+                container.classList.add('markdown-mode');
+                content.className = 'prose prose-invert max-w-none markdown-view';
+
+                const renderMarkdownContent = () => {
+                    try {
+                        // Initialize marked with options
+                        if (typeof marked !== 'undefined') {
                             marked.setOptions({
                                 breaks: true,
                                 gfm: true,
                                 headerIds: true,
                                 sanitize: false
                             });
-                        };
-                        document.head.appendChild(script);
+
+                            // Render markdown
+                            const htmlContent = marked.parse(fileContent);
+                            content.innerHTML = htmlContent;
+
+                            // Highlight code blocks
+                            if (typeof hljs !== 'undefined') {
+                                document.querySelectorAll('pre code').forEach((block) => {
+                                    hljs.highlightElement(block);
+                                });
+                            }
+
+                            // Show render container
+                            editor.classList.add('hidden');
+                            container.classList.remove('hidden');
+                        } else {
+                            console.error('Marked library not loaded');
+                            content.innerHTML = '<div class="p-4 text-red-500">Error: Markdown rendering library not loaded</div>';
+                        }
+                    } catch (error) {
+                        console.error('Error rendering markdown:', error);
+                        content.innerHTML = '<div class="p-4 text-red-500">Error rendering markdown content</div>';
+                        if (typeof showToast === 'function') {
+                            showToast('error', 'Failed to render markdown file');
+                        }
                     }
+                };
 
-                    // Load highlight.js if not already loaded
-                    if (typeof hljs === 'undefined') {
-                        const script = document.createElement('script');
-                        script.src = 'https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/lib/highlight.min.js';
-                        const style = document.createElement('link');
-                        style.rel = 'stylesheet';
-                        style.href = 'https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github-dark.css';
-                        document.head.appendChild(script);
-                        document.head.appendChild(style);
-                    }
-                },
+                // Wait for marked library to be ready
+                if (window.markedReady) {
+                    renderMarkdownContent();
+                } else {
+                    // Check again after a delay
+                    const waitForMarked = (callback, attempts = 0) => {
+                        if (attempts > 20) { // Give up after 20 attempts (2 seconds)
+                            content.innerHTML = '<div class="p-4 text-red-500">Timeout: Markdown library failed to load</div>';
+                            return;
+                        }
 
-                showEditor() {
-                    const container = document.getElementById('auto-render-container');
-                    const editor = document.getElementById('editor');
-                    if (container && editor) {
-                        container.classList.add('hidden');
-                        editor.classList.remove('hidden');
-                    }
-                },
-
-                renderContent() {
-                    const container = document.getElementById('auto-render-container');
-                    const content = document.getElementById('render-content');
-                    const editor = document.getElementById('editor');
-
-                    if (!container || !content || !editor || !state.currentFile) return;
-
-                    const fileExt = file.name.split('.').pop().toLowerCase();
-                    const fileContent = state.editor.getValue();
-
-                    const waitForMarked = (callback) => {
                         if (window.markedReady && typeof marked !== 'undefined') {
                             callback();
                         } else {
-                            setTimeout(() => waitForMarked(callback), 100);
+                            setTimeout(() => waitForMarked(callback, attempts + 1), 100);
                         }
                     };
 
-                    if (fileExt === 'html') {
-                        // Reset container for HTML view
-                        container.classList.remove('markdown-mode');
-                        content.className = 'h-full';
-
-                        // Create sandbox iframe for HTML
-                        const iframe = document.createElement('iframe');
-                        iframe.style.cssText = `
-                        width: 100%;
-                        height: 100%;
-                        border: none;
-                        display: block;
-                        background-color: white;
-                    `;
-
-                        content.innerHTML = '';
-                        content.appendChild(iframe);
-
-                        // Write content to iframe
-                        iframe.contentDocument.open();
-                        iframe.contentDocument.write(fileContent);
-                        iframe.contentDocument.close();
-
-                        // Show render container
-                        editor.classList.add('hidden');
-                        container.classList.remove('hidden');
-                    } else if (fileExt === 'md') {
-                        // Set markdown mode
-                        container.classList.add('markdown-mode');
-                        content.className = 'prose prose-invert max-w-none markdown-view';
-
-                        waitForMarked(() => {
-                            try {
-                                // Initialize marked with options
-                                marked.setOptions({
-                                    breaks: true,
-                                    gfm: true,
-                                    headerIds: true,
-                                    sanitize: false
-                                });
-
-                                // Render markdown
-                                const htmlContent = marked.parse(fileContent);
-                                content.innerHTML = htmlContent;
-
-                                // Highlight code blocks
-                                if (typeof hljs !== 'undefined') {
-                                    document.querySelectorAll('pre code').forEach((block) => {
-                                        hljs.highlightElement(block);
-                                    });
-                                }
-
-                                // Show render container
-                                editor.classList.add('hidden');
-                                container.classList.remove('hidden');
-                            } catch (error) {
-                                console.error('Error rendering markdown:', error);
-                                showToast('error', 'Failed to render markdown file');
-                            }
-                        });
-                    }
+                    waitForMarked(renderMarkdownContent);
                 }
-            };
+            }
+        };
 
-
-
-
-
-        }
 
         // Configuration
         const config = {
@@ -3063,6 +3143,6 @@
             });
         }
     </script>
-</body>        
+</body>
 
-</html> 
+</html>
