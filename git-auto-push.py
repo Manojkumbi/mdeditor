@@ -12,8 +12,8 @@ class GitAutoHandler(FileSystemEventHandler):
         self.cooldown_seconds = 5  # Increased cooldown to avoid too frequent commits
     
     def on_modified(self, event):
-        # Ignore directories and hidden files
-        if event.is_directory or os.path.basename(event.src_path).startswith('.'):
+        # Ignore directory events to avoid multiple triggers
+        if event.is_directory:
             return
             
         current_time = time.time()
