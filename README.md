@@ -117,7 +117,7 @@ We play nice with all modern browsers:
 
 Passionate about developer tools and great documentation.
 
-[![GitHub]()](https://github.com/Manojkumbi) [@manojkumbi](https://github.com/Manojkumbi)
+ [@manojkumbi](https://github.com/Manojkumbi)
 
 ---
 
