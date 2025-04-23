@@ -3,70 +3,79 @@ import os
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import subprocess
-from datetime import datetime 
+from datetime import datetime
 
 class GitAutoHandler(FileSystemEventHandler):
     def __init__(self):
         self.commit_counter = 1
-        self.last_trigger_time = 0
-        self.cooldown = 2
-
+        self.last_commit_time = 0
+        self.cooldown_seconds = 5  # Increased cooldown to avoid too frequent commits
+    
     def on_modified(self, event):
-        current_time = time.time()
-        if current_time - self.last_trigger_time < self.cooldown:
+        # Ignore directories and hidden files
+        if event.is_directory or os.path.basename(event.src_path).startswith('.'):
             return
+            
+        current_time = time.time()
+        # Check if cooldown period has elapsed
+        if current_time - self.last_commit_time < self.cooldown_seconds:
+            return
+            
+        self.last_commit_time = current_time
+        self.process_git_changes()
         
-        self.last_trigger_time = current_time
-        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"\n[{current_datetime}] Changes detected! Processing git operations...")
+    def process_git_changes(self):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"\n[{timestamp}] Changes detected! Processing git operations...")
         
         try:
-            # Execute git commands with output capture
-            add_result = subprocess.run(['git', 'add', '.'], 
-                                     capture_output=True, text=True)
-            if add_result.returncode != 0:
-                raise Exception(f"Git add failed: {add_result.stderr}")
-            print(f"Git add status: {add_result.stdout or 'Success'}")
+            # Add all changes
+            subprocess.run(['git', 'add', '.'], check=True)
+            print("Files staged successfully")
             
-            commit_result = subprocess.run(['git', 'commit', '-m', f'test {self.commit_counter} of commit'], 
-                                        capture_output=True, text=True)
-            if commit_result.returncode != 0:
-                raise Exception(f"Git commit failed: {commit_result.stderr}")
-            print(f"Git commit status: {commit_result.stdout or 'Success'}")
+            # Commit with a counter
+            commit_msg = f"Auto commit #{self.commit_counter} - {timestamp}"
+            subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
+            print(f"Changes committed: {commit_msg}")
             
-            push_result = subprocess.run(['git', 'push'], 
-                                      capture_output=True, text=True)
-            if push_result.returncode != 0:
-                raise Exception(f"Git push failed: {push_result.stderr}")
-            print(f"Git push status: {push_result.stdout or 'Success'}")
+            # Push to remote
+            subprocess.run(['git', 'push'], check=True)
+            print("Changes pushed to remote repository")
             
             self.commit_counter += 1
-            print(f"[{current_datetime}] Git operations completed successfully!")
+            print(f"[{timestamp}] Git operations completed successfully!")
             
+        except subprocess.CalledProcessError as e:
+            print(f"[{timestamp}] Git operation failed: {e}")
         except Exception as e:
-            print(f"[{current_datetime}] Error: {str(e)}")
+            print(f"[{timestamp}] Error: {str(e)}")
 
 def main():
-    watch_path = r"c:\Users\SPKR\projects\mdroutine"
-    os.chdir(watch_path)  # Set working directory
+    # Get the directory path from user or use default
+    watch_path = input("Enter directory to monitor (press Enter for current directory): ").strip()
+    if not watch_path:
+        watch_path = os.getcwd()
     
+    # Change to the watch directory
+    os.chdir(watch_path)
+    
+    # Set up and start the file system observer
     event_handler = GitAutoHandler()
     observer = Observer()
-    observer.schedule(event_handler, watch_path, recursive=True)
+    observer.schedule(event_handler, ".", recursive=True)
     observer.start()
-
-    print("\nMonitoring directory for changes...")
-    print("Press Ctrl+C to stop monitoring\n")
+    
+    print(f"\nMonitoring directory: {watch_path}")
+    print("Press Ctrl+C to stop monitoring")
     
     try:
         while True:
-            print(".", end="", flush=True)
-            time.sleep(2)
+            time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
-        print("\nMonitoring stopped.")
+        print("\nMonitoring stopped")
     
     observer.join()
 
 if __name__ == "__main__":
-    main()       
+    main()
