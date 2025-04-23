@@ -6,7 +6,7 @@
 
 A sleek, modern editor designed specifically for developers who want to manage GitHub repositories with style. Featuring real-time Markdown rendering, intelligent syntax highlighting, and seamless file management - all wrapped in an intuitive interface.
 
-## ✨ Why Choose Our Editor?
+## Why Choose Our Editor?
 
 - **Streamlined Workflow** - Edit and preview in one place
 - **Developer-Focused** - Built for coders, by coders
@@ -14,7 +14,7 @@ A sleek, modern editor designed specifically for developers who want to manage G
 - **Markdown Mastery** - Write beautiful documentation effortlessly
 - **VS Code Experience** - Familiar editing environment with Monaco Editor
 
-## 🔑 Getting Connected
+## Getting Connected
 
 ### Quick Start
 1. **Create a GitHub Token**
@@ -25,7 +25,7 @@ A sleek, modern editor designed specifically for developers who want to manage G
 2. **Log In Like a Pro**
    - Paste your token
    - Click "Connect to GitHub"
-   - Watch the magic happen ✨
+   - Watch the magic happen 
 
 ### Security First
 Your token is stored securely in your browser and is only used to communicate directly with GitHub's API. We take your security seriously!
@@ -39,7 +39,7 @@ Your token is stored securely in your browser and is only used to communicate di
 - **Code Folding** - Collapse sections for better focus
 - **Minimap Navigation** - Bird's eye view of your document
 
-![Editor Features](https://via.placeholder.com/600x300?text=Editor+Features)
+![Editor Features](./images/res.png)
 
 ### Markdown Marvel
 - **Live Preview** - See your changes as you type
@@ -53,7 +53,7 @@ Your token is stored securely in your browser and is only used to communicate di
 - **File Tree Navigation** - Explore your code with ease
 - **Change Indicators** - Visual cues for modified files
 
-## 🧰 File Management
+## File Management
 
 ### Creating Content
 - **Right-Click → "New File"** - Add files to your project
@@ -77,13 +77,6 @@ Your token is stored securely in your browser and is only used to communicate di
 | Replace | `Ctrl+H` | `⌘+H` |
 | Toggle Preview | `Ctrl+P` | `⌘+P` |
 
-## 🎨 Supported Languages
-
-```
-Markdown (.md) • HTML • JavaScript • TypeScript • CSS • JSON • YAML
-Python • Java • C/C++ • Go • Rust • Ruby • PHP • SQL • Shell
-```
-
 ## 💡 Pro Tips
 
 > **Editor Space Ninja** - Toggle the sidebar for maximum editing area
@@ -94,7 +87,7 @@ Python • Java • C/C++ • Go • Rust • Ruby • PHP • SQL • Shell
 > 
 > **Quick Access** - Use keyboard shortcuts to speed up your workflow
 
-## 🔧 Troubleshooting
+##  Troubleshooting
 
 ### Common Rescue Missions
 - **Authentication Issues** - Check token scope and expiration
@@ -108,7 +101,7 @@ Python • Java • C/C++ • Go • Rust • Ruby • PHP • SQL • Shell
 - **"File modified elsewhere"** → Someone beat you to it, reload to sync
 - **"Rate limit exceeded"** → Too many requests, take a coffee break
 
-## 📱 Browser Compatibility
+##  Browser Compatibility
 
 We play nice with all modern browsers:
 - Chrome (our favorite)
@@ -119,16 +112,12 @@ We play nice with all modern browsers:
 
 ---
 
-## 👋 Meet the Creator
-
-<img src="https://via.placeholder.com/150?text=K" align="left" style="margin-right:20px">
-
+## 
 **Kumaraswamy**  
-GitHub Wizard & Code Enthusiast
 
 Passionate about developer tools and great documentation.
 
-[![GitHub](https://via.placeholder.com/20?text=G)](https://github.com/Manojkumbi) [@manojkumbi](https://github.com/Manojkumbi)
+[![GitHub]()](https://github.com/Manojkumbi) [@manojkumbi](https://github.com/Manojkumbi)
 
 ---
 
